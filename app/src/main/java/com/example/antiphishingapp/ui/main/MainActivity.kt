@@ -34,20 +34,22 @@ import org.opencv.imgproc.Imgproc
 
 // ---- 데이터 클래스: Bitmap + Rects 반환 ----
 data class DetectionResult(
-    val bitmap: Bitmap,
-    val boxes: List<Rect>
+    val bitmap: Bitmap, // 원본 이미지
+    val boxes: List<Rect> // 탐지된 객체 box 좌표
 )
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        // OpenCV 라이브러리 로드
         if (OpenCVLoader.initDebug()) {
             Log.d("MainActivity", "OpenCV initialized successfully")
         } else {
             Log.e("MainActivity", "OpenCV initialization failed")
         }
 
+        // Compose UI (PhishingDetectScreen())실행
         setContent {
             AntiPhishingAppTheme {
                 Surface(
@@ -68,7 +70,7 @@ fun PhishingDetectScreen() {
     val context = LocalContext.current
 
     val galleryLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.GetContent()
+        contract = ActivityResultContracts.GetContent() // 갤러리에서 이미지 가져옴
     ) { uri: Uri? ->
         uri?.let {
             val inputStream = context.contentResolver.openInputStream(it)
@@ -76,7 +78,7 @@ fun PhishingDetectScreen() {
             detectionResult = findStampRoi(originalBitmap, context)
         }
     }
-
+    // 화면 구조
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -108,6 +110,8 @@ fun PhishingDetectScreen() {
         Button(onClick = { galleryLauncher.launch("image/*") }) {
             Text(text = "이미지 불러오기")
         }
+
+        Spacer(modifier = Modifier.height(32.dp))
     }
 }
 
@@ -132,7 +136,7 @@ fun AnalyzedImageWithBoxes(
         )
 
         Canvas(modifier = Modifier.matchParentSize()) {
-            val scaleX = size.width / originalWidth
+            val scaleX = size.width / originalWidth // 박스 좌표를 실제 화면 표시 크기로 보정
             val scaleY = size.height / originalHeight
 
             boxes.forEach { rect ->
@@ -150,14 +154,15 @@ fun AnalyzedImageWithBoxes(
 // --- Logic: 박스 좌표 추출 ---
 private fun findStampRoi(inputBitmap: Bitmap, context: Context): DetectionResult {
     val srcMat = Mat()
-    Utils.bitmapToMat(inputBitmap, srcMat)
+    Utils.bitmapToMat(inputBitmap, srcMat) // 이미지를 Mat 형태로 변환
 
     val bgrMat = Mat()
-    Imgproc.cvtColor(srcMat, bgrMat, Imgproc.COLOR_RGBA2BGR)
+    Imgproc.cvtColor(srcMat, bgrMat, Imgproc.COLOR_RGBA2BGR) // rgba->bgr
 
     val hsvMat = Mat()
-    Imgproc.cvtColor(bgrMat, hsvMat, Imgproc.COLOR_BGR2HSV)
+    Imgproc.cvtColor(bgrMat, hsvMat, Imgproc.COLOR_BGR2HSV) // bgr->hsv
 
+    // 탐지 색상 범위 설정
     val lowerRed1 = Scalar(0.0, 40.0, 50.0)
     val upperRed1 = Scalar(10.0, 255.0, 255.0)
     val lowerRed2 = Scalar(170.0, 40.0, 50.0)
@@ -171,18 +176,21 @@ private fun findStampRoi(inputBitmap: Bitmap, context: Context): DetectionResult
     val redMask = Mat()
     Core.bitwise_or(mask1, mask2, redMask)
 
+    // 모폴로지 연산 (빈 픽셀 채움, 노이즈 제거 통해 해당 영역만 깔끔하게 남김)
     val kernel = Imgproc.getStructuringElement(Imgproc.MORPH_ELLIPSE, Size(5.0, 5.0))
     Imgproc.morphologyEx(redMask, redMask, Imgproc.MORPH_CLOSE, kernel)
     Imgproc.morphologyEx(redMask, redMask, Imgproc.MORPH_OPEN, kernel)
 
+    // 컨투어 탐색
     val contours = ArrayList<MatOfPoint>()
     val hierarchy = Mat()
     Imgproc.findContours(redMask, contours, hierarchy, Imgproc.RETR_EXTERNAL, Imgproc.CHAIN_APPROX_SIMPLE)
 
+    // 외곽선(contour) 감싸는 최소 직사각형 좌표 추출
     val rects = mutableListOf<Rect>()
     if (contours.isNotEmpty()) {
         for (contour in contours) {
-            if (Imgproc.contourArea(contour) > 1000) {
+            if (Imgproc.contourArea(contour) > 1000) { // 1000보다 작은 크기는 노이즈로 간주
                 val rect = Imgproc.boundingRect(contour)
                 rects.add(rect)
             }
