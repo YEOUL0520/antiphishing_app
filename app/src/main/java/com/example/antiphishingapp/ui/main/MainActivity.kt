@@ -1,4 +1,4 @@
-package com.example.antiphishingapp.ui.main // 패키지 위치가 ui/main으로 변경됨
+package com.example.antiphishingapp.ui.main
 
 import android.content.Context
 import android.graphics.Bitmap
@@ -11,44 +11,37 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Button
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.antiphishingapp.ui.theme.AntiPhishingAppTheme
 import org.opencv.android.OpenCVLoader
 import org.opencv.android.Utils
-import org.opencv.core.Core
-import org.opencv.core.Mat
-import org.opencv.core.MatOfPoint
-import org.opencv.core.Scalar
+import org.opencv.core.*
 import org.opencv.imgproc.Imgproc
+
+// ---- 데이터 클래스: Bitmap + Rects 반환 ----
+data class DetectionResult(
+    val bitmap: Bitmap,
+    val boxes: List<Rect>
+)
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // OpenCV 라이브러리 로드
         if (OpenCVLoader.initDebug()) {
             Log.d("MainActivity", "OpenCV initialized successfully")
         } else {
@@ -69,10 +62,9 @@ class MainActivity : ComponentActivity() {
 }
 
 // --- UI ---
-
 @Composable
 fun PhishingDetectScreen() {
-    var imageBitmap by remember { mutableStateOf<Bitmap?>(null) }
+    var detectionResult by remember { mutableStateOf<DetectionResult?>(null) }
     val context = LocalContext.current
 
     val galleryLauncher = rememberLauncherForActivityResult(
@@ -81,7 +73,7 @@ fun PhishingDetectScreen() {
         uri?.let {
             val inputStream = context.contentResolver.openInputStream(it)
             val originalBitmap = BitmapFactory.decodeStream(inputStream)
-            imageBitmap = findStampRoi(originalBitmap, context)
+            detectionResult = findStampRoi(originalBitmap, context)
         }
     }
 
@@ -92,10 +84,10 @@ fun PhishingDetectScreen() {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        if (imageBitmap != null) {
-            Image(
-                bitmap = imageBitmap!!.asImageBitmap(),
-                contentDescription = "분석된 이미지",
+        if (detectionResult != null) {
+            AnalyzedImageWithBoxes(
+                bitmap = detectionResult!!.bitmap,
+                boxes = detectionResult!!.boxes,
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f)
@@ -119,35 +111,53 @@ fun PhishingDetectScreen() {
     }
 }
 
-// --- Preview ---
-
-@Preview(showBackground = true, name = "Default Preview")
+// ---- 이미지 + 박스 표시 ----
 @Composable
-fun DefaultPreview() {
-    AntiPhishingAppTheme {
-        PhishingDetectScreen()
+fun AnalyzedImageWithBoxes(
+    bitmap: Bitmap,
+    boxes: List<Rect>,
+    modifier: Modifier = Modifier
+) {
+    val originalWidth = bitmap.width.toFloat()
+    val originalHeight = bitmap.height.toFloat()
+
+    Box(
+        modifier = modifier
+            .aspectRatio(originalWidth / originalHeight) // 원본 비율 유지
+    ) {
+        Image(
+            bitmap = bitmap.asImageBitmap(),
+            contentDescription = null,
+            modifier = Modifier.matchParentSize()
+        )
+
+        Canvas(modifier = Modifier.matchParentSize()) {
+            val scaleX = size.width / originalWidth
+            val scaleY = size.height / originalHeight
+
+            boxes.forEach { rect ->
+                drawRect(
+                    color = Color.Yellow,
+                    topLeft = Offset(rect.x * scaleX, rect.y * scaleY),
+                    size = Size(rect.width * scaleX, rect.height * scaleY),
+                    style = Stroke(width = 5f)
+                )
+            }
+        }
     }
 }
 
-// --- Logic ---
-
-private fun findStampRoi(inputBitmap: Bitmap, context: Context): Bitmap {
+// --- Logic: 박스 좌표 추출 ---
+private fun findStampRoi(inputBitmap: Bitmap, context: Context): DetectionResult {
     val srcMat = Mat()
-    val resultBitmap = inputBitmap.copy(Bitmap.Config.ARGB_8888, true)
-    Utils.bitmapToMat(resultBitmap, srcMat)
+    Utils.bitmapToMat(inputBitmap, srcMat)
 
-    // ▼▼▼▼▼▼▼▼▼▼▼ 여기가 수동 SDK 방식의 핵심입니다! ▼▼▼▼▼▼▼▼▼▼▼
     val bgrMat = Mat()
-    val hsvMat = Mat()
-
-    // 1단계: 안드로이드 RGBA 형식을 OpenCV의 표준인 BGR 형식으로 변환
     Imgproc.cvtColor(srcMat, bgrMat, Imgproc.COLOR_RGBA2BGR)
 
-    // 2단계: BGR 형식을 HSV 형식으로 변환
+    val hsvMat = Mat()
     Imgproc.cvtColor(bgrMat, hsvMat, Imgproc.COLOR_BGR2HSV)
-    // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
 
-    // 너그러운 빨간색 범위 설정
     val lowerRed1 = Scalar(0.0, 40.0, 50.0)
     val upperRed1 = Scalar(10.0, 255.0, 255.0)
     val lowerRed2 = Scalar(170.0, 40.0, 50.0)
@@ -161,8 +171,7 @@ private fun findStampRoi(inputBitmap: Bitmap, context: Context): Bitmap {
     val redMask = Mat()
     Core.bitwise_or(mask1, mask2, redMask)
 
-    // 노이즈 제거
-    val kernel = Imgproc.getStructuringElement(Imgproc.MORPH_ELLIPSE, org.opencv.core.Size(5.0, 5.0))
+    val kernel = Imgproc.getStructuringElement(Imgproc.MORPH_ELLIPSE, Size(5.0, 5.0))
     Imgproc.morphologyEx(redMask, redMask, Imgproc.MORPH_CLOSE, kernel)
     Imgproc.morphologyEx(redMask, redMask, Imgproc.MORPH_OPEN, kernel)
 
@@ -170,21 +179,19 @@ private fun findStampRoi(inputBitmap: Bitmap, context: Context): Bitmap {
     val hierarchy = Mat()
     Imgproc.findContours(redMask, contours, hierarchy, Imgproc.RETR_EXTERNAL, Imgproc.CHAIN_APPROX_SIMPLE)
 
-    var found = false
+    val rects = mutableListOf<Rect>()
     if (contours.isNotEmpty()) {
         for (contour in contours) {
             if (Imgproc.contourArea(contour) > 1000) {
                 val rect = Imgproc.boundingRect(contour)
-                Imgproc.rectangle(srcMat, rect.tl(), rect.br(), Scalar(0.0, 0.0, 255.0), 8)
-                found = true
+                rects.add(rect)
             }
         }
     }
 
-    if (!found) {
+    if (rects.isEmpty()) {
         Toast.makeText(context, "직인 영역을 찾지 못했습니다.", Toast.LENGTH_SHORT).show()
     }
 
-    Utils.matToBitmap(srcMat, resultBitmap)
-    return resultBitmap
+    return DetectionResult(inputBitmap, rects)
 }
