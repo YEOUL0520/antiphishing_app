@@ -1,0 +1,2 @@
+ninja: Entering directory `C:\git clone\sdk\.cxx\Debug\x1i2d4s1\x86_64'
+ninja: no work to do.
