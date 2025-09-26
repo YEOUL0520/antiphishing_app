@@ -31,6 +31,13 @@ import org.opencv.android.OpenCVLoader
 import org.opencv.android.Utils
 import org.opencv.core.*
 import org.opencv.imgproc.Imgproc
+import okhttp3.*
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.RequestBody.Companion.toRequestBody
+import java.io.ByteArrayOutputStream
+import java.io.IOException
+import java.util.*
+import org.json.JSONObject
 
 // ---- 데이터 클래스: Bitmap + Rects 반환 ----
 data class DetectionResult(
@@ -202,4 +209,63 @@ private fun findStampRoi(inputBitmap: Bitmap, context: Context): DetectionResult
     }
 
     return DetectionResult(inputBitmap, rects)
+}
+
+// --- Logic: Naver CLOVA OCR API 호출 ---
+private fun performOcr(bitmap: Bitmap, onResult: (String) -> Unit) {
+
+    val apiUrl = "https://fwymjktetd.apigw.ntruss.com/custom/v1/45162/f06f44fc9667be94a98feed9824ad4f1bb0c7a35bf9e32132fc012be76435739/general"
+    val secretKey = "S0daUXhPRFJWZG9QdFJvdWtudFlkT0dObENZVE95QUg="
+
+    // 이미지 ByteArray 변환 (API로 보낼 이미지 데이터)
+    val stream = ByteArrayOutputStream()
+    bitmap.compress(Bitmap.CompressFormat.JPEG, 80, stream)
+    val imageByteArray = stream.toByteArray()
+
+    // 요청 JSON 생성 (request_json)
+    val requestJson = JSONObject().apply {
+        put("version", "V2")
+        put("requestId", UUID.randomUUID().toString())
+        put("timestamp", System.currentTimeMillis())
+        val image = JSONObject().apply {
+            put("format", "jpg")
+            put("name", "demo")
+        }
+        put("images", org.json.JSONArray().put(image))
+    }
+
+    // Multipart Body 생성 (이미지, JSON 한 번에 보내기)
+    val requestBody = MultipartBody.Builder()
+        .setType(MultipartBody.FORM)
+        .addFormDataPart("message", requestJson.toString())
+        .addFormDataPart("file", "image.jpg",
+            imageByteArray.toRequestBody("image/jpeg".toMediaType(), 0, imageByteArray.size))
+        .build()
+
+    // HTTP 객체 생성
+    val request = Request.Builder()
+        .url(apiUrl)
+        .header("X-OCR-SECRET", secretKey)
+        .post(requestBody)
+        .build()
+
+    // API 호출
+    OkHttpClient().newCall(request).enqueue(object : Callback {
+        override fun onFailure(call: Call, e: IOException) {
+            e.printStackTrace()
+            onResult("OCR 실패: ${e.message}")
+        }
+
+        override fun onResponse(call: Call, response: Response) {
+            if (response.isSuccessful) {
+                val responseBody = response.body?.string()
+                Log.d("OCR_SUCCESS", responseBody ?: "empty body")
+                onResult(responseBody ?: "결과 없음")
+            } else {
+                val errorBody = response.body?.string()
+                Log.e("OCR_ERROR", "Error ${response.code}: $errorBody")
+                onResult("OCR 실패: 코드 ${response.code}")
+            }
+        }
+    })
 }

@@ -12,4 +12,4 @@
 -- Detecting CXX compile features - done
 -- Configuring done
 -- Generating done
--- Build files have been written to: C:/git clone/sdk/.cxx/Debug/x1i2d4s1/x86
+-- Build files have been written to: C:/git clone/sdk/.cxx/Debug/x1i2d4s1/x86_64
