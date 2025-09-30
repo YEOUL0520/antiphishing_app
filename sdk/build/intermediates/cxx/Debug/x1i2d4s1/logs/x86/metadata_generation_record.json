@@ -2,7 +2,7 @@
   {
     "level_": 0,
     "message_": "Start JSON generation. Platform version: 21 min SDK version: x86",
-    "file_": "C:\\git clone\\sdk\\libcxx_helper\\CMakeLists.txt",
+    "file_": "C:\\Users\\sally\\Desktop\\4-2\\MobilePrograming\\antiphishing_app\\sdk\\libcxx_helper\\CMakeLists.txt",
     "tag_": "debug|x86",
     "diagnosticCode_": 0,
     "memoizedIsInitialized": 1,
@@ -14,8 +14,8 @@
   },
   {
     "level_": 0,
-    "message_": "JSON \u0027C:\\git clone\\sdk\\.cxx\\Debug\\x1i2d4s1\\x86\\android_gradle_build.json\u0027 was up-to-date",
-    "file_": "C:\\git clone\\sdk\\libcxx_helper\\CMakeLists.txt",
+    "message_": "JSON \u0027C:\\Users\\sally\\Desktop\\4-2\\MobilePrograming\\antiphishing_app\\sdk\\.cxx\\Debug\\x1i2d4s1\\x86\\android_gradle_build.json\u0027 was up-to-date",
+    "file_": "C:\\Users\\sally\\Desktop\\4-2\\MobilePrograming\\antiphishing_app\\sdk\\libcxx_helper\\CMakeLists.txt",
     "tag_": "debug|x86",
     "diagnosticCode_": 0,
     "memoizedIsInitialized": 1,
@@ -28,7 +28,7 @@
   {
     "level_": 0,
     "message_": "JSON generation completed without problems",
-    "file_": "C:\\git clone\\sdk\\libcxx_helper\\CMakeLists.txt",
+    "file_": "C:\\Users\\sally\\Desktop\\4-2\\MobilePrograming\\antiphishing_app\\sdk\\libcxx_helper\\CMakeLists.txt",
     "tag_": "debug|x86",
     "diagnosticCode_": 0,
     "memoizedIsInitialized": 1,

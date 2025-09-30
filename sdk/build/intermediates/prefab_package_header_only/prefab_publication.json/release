@@ -1,5 +1,5 @@
 {
-  "installationFolder": "C:\\git clone\\sdk\\build\\intermediates\\prefab_package\\release\\prefab",
+  "installationFolder": "C:\\Users\\sally\\Desktop\\4-2\\MobilePrograming\\antiphishing_app\\sdk\\build\\intermediates\\prefab_package\\release\\prefab",
   "gradlePath": ":sdk",
   "packageInfo": {
     "packageName": "sdk",
@@ -8,7 +8,7 @@
     "modules": [
       {
         "moduleName": "opencv_jni_shared",
-        "moduleHeaders": "C:\\git clone\\sdk\\native\\jni\\include",
+        "moduleHeaders": "C:\\Users\\sally\\Desktop\\4-2\\MobilePrograming\\antiphishing_app\\sdk\\native\\jni\\include",
         "moduleExportLibraries": [],
         "abis": []
       }
