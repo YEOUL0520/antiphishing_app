@@ -38,7 +38,7 @@ import com.example.antiphishingapp.feature.model.VoiceUiResult
 import com.example.antiphishingapp.feature.viewmodel.AnalysisViewModel
 import com.example.antiphishingapp.feature.viewmodel.VoiceAnalysisViewModel
 import com.example.antiphishingapp.theme.*
-import com.example.antiphishingapp.viewmodel.AuthViewModel
+import com.example.antiphishingapp.feature.viewmodel.AuthViewModel
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.toRequestBody

@@ -15,7 +15,7 @@ import com.example.antiphishingapp.feature.viewmodel.LoginViewModel
 import com.example.antiphishingapp.feature.viewmodel.VoiceAnalysisViewModel
 import com.example.antiphishingapp.ui.main.MainScreen
 import com.example.antiphishingapp.ui.screen.*
-import com.example.antiphishingapp.viewmodel.AuthViewModel
+import com.example.antiphishingapp.feature.viewmodel.AuthViewModel
 
 @Composable
 fun AppNavGraph(navController: NavHostController, startRoute: String) {
@@ -35,7 +35,10 @@ fun AppNavGraph(navController: NavHostController, startRoute: String) {
         startDestination = startRoute
     ) {
         composable("title") {
-            TitleScreen(navController = navController)
+            TitleScreen(
+                navController = navController,
+                authViewModel = authViewModel
+            )
         }
 
         composable("login") {

@@ -1,21 +1,12 @@
 package com.example.antiphishingapp.network
 
-import com.example.antiphishingapp.feature.model.AnalysisResponse
-import com.example.antiphishingapp.feature.model.SignupRequest
-import com.example.antiphishingapp.feature.model.UserResponse
-import com.example.antiphishingapp.feature.model.LoginRequest
-import com.example.antiphishingapp.feature.model.TokenResponse
-
+import com.example.antiphishingapp.feature.model.*
 import okhttp3.MultipartBody
-import okhttp3.ResponseBody
 import okhttp3.RequestBody
+import okhttp3.ResponseBody
 import retrofit2.Call
-import retrofit2.http.*
 import retrofit2.Response
-import retrofit2.http.Body
-import retrofit2.http.POST
-
-
+import retrofit2.http.*
 
 // 문자 분석 요청/응답 모델
 data class SmsDetectRequest(
@@ -30,54 +21,33 @@ data class SmsDetectResponse(
     val keywords_found: List<String>,
     val url_results: Map<String, Map<String, Any>>
 )
-
 interface ApiService {
 
-    // 서버 상태 확인 (GET /healthz)
     @GET("healthz")
     fun checkHealth(): Call<String>
 
-    // 단일 이미지 업로드 (POST /upload-image)
     @Multipart
     @POST("upload-image")
-    fun uploadImage(
-        @Part file: MultipartBody.Part
-    ): Call<ResponseBody>
+    fun uploadImage(@Part file: MultipartBody.Part): Call<ResponseBody>
 
-    // 여러 이미지 업로드 (POST /upload-images)
     @Multipart
     @POST("upload-images")
-    fun uploadMultipleImages(
-        @Part files: List<MultipartBody.Part>
-    ): Call<ResponseBody>
+    fun uploadMultipleImages(@Part files: List<MultipartBody.Part>): Call<ResponseBody>
 
-    // 음성 파일 업로드 (POST /api/transcribe/upload)
     @Multipart
     @POST("api/transcribe/upload")
-    fun uploadAudioFile(
-        @Part file: MultipartBody.Part
-    ): Call<ResponseBody>
+    fun uploadAudioFile(@Part file: MultipartBody.Part): Call<ResponseBody>
 
-    // 음성 변환 상태 조회 (GET /api/transcribe/status/{token})
     @GET("api/transcribe/status/{token}")
-    fun getTranscribeStatus(
-        @Path("token") token: String
-    ): Call<ResponseBody>
+    fun getTranscribeStatus(@Path("token") token: String): Call<ResponseBody>
 
-    // 문서 분석 (POST /process-request)
     @Multipart
     @POST("process-request")
-    fun processRequest(
-        @Part file: MultipartBody.Part
-    ): Call<AnalysisResponse>
+    fun processRequest(@Part file: MultipartBody.Part): Call<AnalysisResponse>
 
-    // 문자 내용 분석 (POST /api/sms/detect_json)
     @POST("api/sms/detect_json")
-    fun detectSmsJson(
-        @Body payload: SmsDetectRequest
-    ): Call<SmsDetectResponse>
+    fun detectSmsJson(@Body payload: SmsDetectRequest): Call<SmsDetectResponse>
 
-    // 음성 파일 분석 (STT + 보이스피싱 분석)
     @Multipart
     @POST("api/voice-phishing/analyze-audio")
     fun analyzeAudioFile(
@@ -86,31 +56,14 @@ interface ApiService {
         @Part("analysis_method") method: RequestBody
     ): Call<ResponseBody>
 
+    // 일반 로그인
+    @POST("auth/login")
+    suspend fun login(@Body request: LoginRequest): Response<TokenResponse>
 
     @POST("auth/signup")
     suspend fun signup(@Body request: SignupRequest): Response<UserResponse>
 
-    // 로그인 (POST /auth/login)
-    @POST("auth/login")
-    suspend fun login(@Body request: LoginRequest): Response<TokenResponse>
-
-    // 소셜 로그인 코드를 토큰으로 교환하는 API 함수
-    @FormUrlEncoded // application/x-www-form-urlencoded 포맷을 서버가 요구할 수 있으므로 추가
-    @POST("auth/kakao/callback")
-    suspend fun exchangeKakaoCode(
-        @Field("code") code: String
-    ): Response<TokenResponse>
-
-    @FormUrlEncoded
-    @POST("auth/naver/callback")
-    suspend fun exchangeNaverCode(
-        @Field("code") code: String,
-        @Field("state") state: String
-    ): Response<TokenResponse>
-
-    // 로그인한 사용자 정보를 가져옴 (GET /auth/me)
+    // 사용자 정보 조회
     @GET("auth/me")
-    suspend fun getMe(
-        @Header("Authorization") token: String
-    ): Response<UserResponse>
+    suspend fun getMe(@Header("Authorization") token: String): Response<UserResponse>
 }

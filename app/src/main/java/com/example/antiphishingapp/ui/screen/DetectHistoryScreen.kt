@@ -58,7 +58,7 @@ import com.example.antiphishingapp.theme.Primary100
 import com.example.antiphishingapp.theme.Primary200
 import com.example.antiphishingapp.theme.Primary300
 import com.example.antiphishingapp.theme.Primary900
-import com.example.antiphishingapp.viewmodel.AuthViewModel
+import com.example.antiphishingapp.feature.viewmodel.AuthViewModel
 
 @Composable
 fun DetectHistoryScreen(

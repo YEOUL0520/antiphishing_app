@@ -11,7 +11,10 @@ import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -23,7 +26,10 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.antiphishingapp.R
+import com.example.antiphishingapp.feature.viewmodel.LoginResult
 import com.example.antiphishingapp.feature.viewmodel.SocialLoginViewModel
+import com.example.antiphishingapp.ui.SocialLoginCallbackHandler
+import com.example.antiphishingapp.feature.viewmodel.AuthViewModel
 import kotlinx.coroutines.flow.collectLatest
 import com.example.antiphishingapp.theme.Primary900
 import com.example.antiphishingapp.theme.Primary300
@@ -33,6 +39,7 @@ import com.example.antiphishingapp.theme.Pretendard
 @Composable
 fun TitleScreen(
     navController: NavController,
+    authViewModel: AuthViewModel,
     socialViewModel: SocialLoginViewModel = viewModel()
 ) {
 
@@ -50,17 +57,34 @@ fun TitleScreen(
         }
     }
 
+    val callbackUri by SocialLoginCallbackHandler.uriState
+
+    // 딥링크 콜백 URI가 변경될 때마다 소셜 로그인 콜백 처리
+    LaunchedEffect(callbackUri) {
+        val uri = callbackUri
+        if (uri != null) {
+            socialViewModel.handleCallbackUri(uri)
+            // URI 처리 후 상태를 다시 null로 만들어 중복 처리를 방지
+            SocialLoginCallbackHandler.uriState.value = null
+        }
+    }
+
     // 로그인 결과에 따른 화면 이동 처리
     LaunchedEffect(Unit) {
-        socialViewModel.loginResult.collectLatest { isSuccess ->
-            if (isSuccess) {
-                // 로그인 성공 시 메인 화면으로 이동 (MainScreen 경로로 가정)
-                navController.navigate("main") {
-                    popUpTo("title") { inclusive = true } // 이전 화면 모두 제거
+        socialViewModel.loginResult.collectLatest { result ->
+            when (result) {
+                is LoginResult.Success, is LoginResult.SuccessWithInfo -> {
+                    // AuthViewModel에 로그인 상태가 변경되었음을 알리고 사용자 정보를 다시 로드
+                    authViewModel.reloadUser()
+                    // 로그인 성공 시 메인 화면으로 이동 (MainScreen 경로로 가정)
+                    navController.navigate("main") {
+                        popUpTo("title") { inclusive = true } // 이전 화면 모두 제거
+                    }
                 }
-            } else {
-                // 로그인 실패 시 토스트 메시지 출력
-                Toast.makeText(context, "소셜 로그인에 실패했습니다. 다시 시도해 주세요.", Toast.LENGTH_LONG).show()
+                is LoginResult.Failure -> {
+                    // 로그인 실패 시 토스트 메시지 출력
+                    Toast.makeText(context, "소셜 로그인에 실패했습니다. 다시 시도해 주세요.", Toast.LENGTH_LONG).show()
+                }
             }
         }
     }

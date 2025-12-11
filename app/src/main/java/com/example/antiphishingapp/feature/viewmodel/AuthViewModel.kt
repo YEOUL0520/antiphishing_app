@@ -1,4 +1,4 @@
-package com.example.antiphishingapp.viewmodel
+package com.example.antiphishingapp.feature.viewmodel
 
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel

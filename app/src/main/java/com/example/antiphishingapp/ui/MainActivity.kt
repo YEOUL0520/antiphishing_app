@@ -13,6 +13,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.core.app.ActivityCompat
@@ -192,7 +193,7 @@ class MainActivity : ComponentActivity() {
     private fun handleSocialLoginIntent(intent: Intent?) {
         val uri: Uri? = intent?.data
         if (intent?.action == Intent.ACTION_VIEW && uri != null) {
-            if (uri.scheme == "antiphishing") {
+            if (uri.scheme == "antiphishingapp") {
                 Log.d("SOCIAL_LOGIN", "Received callback URI: $uri")
                 SocialLoginCallbackHandler.handleUri(uri)
             }
@@ -205,15 +206,9 @@ class MainActivity : ComponentActivity() {
 // ───────────────────────────────────────────────────────────────
 
 object SocialLoginCallbackHandler {
-    private var callbackUri: Uri? = null
+    val uriState = mutableStateOf<Uri?>(null)
 
     fun handleUri(uri: Uri) {
-        callbackUri = uri
-    }
-
-    fun getAndClearUri(): Uri? {
-        val uri = callbackUri
-        callbackUri = null
-        return uri
+        uriState.value = uri
     }
 }
