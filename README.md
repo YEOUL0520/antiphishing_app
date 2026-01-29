@@ -8,7 +8,7 @@ Jetpack Compose 기반 UI와 **MVVM + Repository 패턴**을 적용하여
 
 ## 📁 Project Structure
 
-본 프로젝트는 **기능 단위(feature) 분리**와 **관심사 분리(SoC)**를 중심으로 구성되어 있습니다.
+본 프로젝트는 **기능 단위(feature) 분리**와 **관심사 분리(SoC)** 를 중심으로 구성되어 있습니다.
 
 ```text
 app/
