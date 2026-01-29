@@ -25,10 +25,10 @@ app/
     │   │   ├── RealtimeMessage.kt        # WebSocket 수신 메시지 DTO
     │   │   ├── SuspiciousItem.kt         # UI 의심근거(문구) 리스트용 data class
     │   │   ├── VoiceData.kt              # 음성 분석 API 응답 DTO 묶음
-    │   │   └── VoiceResult.kt            # UI 표시용 결과: riskScore(0~100) + suspiciousItems + transcript
+    │   │   └── VoiceResult.kt            # UI 표시용 결과
     │   │
     │   ├── realtime/          # 실시간 통신(WebSocket)
-    │   │   ├── RealtimeCallService.kt     # 마이크 PCM(16kHz) 녹음해 실시간으로 서버 Websocket 전송
+    │   │   ├── RealtimeCallService.kt     # 마이크 PCM(16kHz) 실시간 서버 Websocket 전송
     │   │   └── WebSocketClient.kt         # WebSocket 연결/송수신 및 RealtimeMessage 파싱
     │   │
     │   ├── repository/        # Feature 단위 Repository
@@ -86,48 +86,22 @@ app/
 
 ---
 
-## 📊 Overall System Flow Diagram
-
-```mermaid
-flowchart LR
-    %% UI Layer
-    UI[UI Screens<br/>(Compose)]
-    VM[ViewModel]
-
-    %% Repository Layer
-    REPO[Repository Layer]
-
-    %% Realtime
-    SERVICE[RealtimeCallService<br/>(Foreground Service)]
-    WS[WebSocket]
-
-    %% Server
-    SERVER[Server<br/>(STT · 피싱 분석)]
-
-    %% Common Flow
-    UI --> VM
-    VM --> REPO
-
-    %% REST API Flow
-    REPO -->|REST API| SERVER
-    SERVER -->|Analysis Result| REPO
-    REPO --> VM
-    VM --> UI
-
-    %% Realtime Flow
-    SERVICE -->|PCM Audio (16kHz)| REPO
-    REPO -->|WebSocket| WS
-    WS --> SERVER
-    SERVER -->|RealtimeMessage| WS
-    WS --> REPO
-   ```
-
----
-
 ## 🔄 Overall Feature Flow
 
 ### 📞 실시간 통화 탐지 흐름 (WebSocket 기반)
+#### 📊 Realtime Call Detection Flow
 
+```mermaid
+flowchart LR
+    CR[CallReceiver] --> SVC[RealtimeCallService]
+    SVC --> RR[RealtimeRepository]
+    RR --> WS[WebSocket]
+    WS --> SV[Server]
+    SV --> WS
+    WS --> RR
+    RR --> VM[RealtimeViewModel]
+    VM --> UI[RealtimeScreen]
+```
 ```text
 CallReceiver.kt
  → RealtimeCallService.kt
@@ -152,7 +126,17 @@ CallReceiver.kt
 ---
 
 ### 🎙 음성 파일 업로드 분석 흐름
+#### 📊 Voice File Analysis Flow
 
+```mermaid
+flowchart LR
+    UI1[VoiceUploadScreen] --> VM1[VoiceAnalysisViewModel]
+    VM1 --> VR[VoiceRepository]
+    VR --> SV[Server]
+    SV --> VR
+    VR --> VM1
+    VM1 --> UI2[VoiceUploadResultScreen]
+```
 ```text
 VoiceUploadScreen.kt
 → VoiceAnalysisViewModel.kt
@@ -175,7 +159,17 @@ VoiceUploadScreen.kt
 ---
 
 ### 📑 문서 캡처 이미지 분석 흐름 (위조 문서 분석)
+#### 📊 Document Image Analysis Flow
 
+```mermaid
+flowchart LR
+    UI1[FileUploadScreen] --> VM1[AnalysisViewModel]
+    VM1 --> AR[AnalysisRepository]
+    AR --> SV[Server]
+    SV --> AR
+    AR --> VM1
+    VM1 --> UI2[AnalysisScreen]
+```
 ```text
 FileUploadScreen.kt
 → AnalysisViewModel.kt
@@ -195,7 +189,17 @@ FileUploadScreen.kt
 ---
 
 ### 📩 SMS 스미싱 분석 흐름
+#### 📊 SMS Phishing Analysis Flow
 
+```mermaid
+flowchart LR
+    RX[SmsReceiver] --> VM1[AnalysisViewModel]
+    VM1 --> AR[AnalysisRepository]
+    AR --> SV[Server]
+    SV --> AR
+    AR --> VM1
+    VM1 --> UI[MessageAlertCard]
+```
 ```text
 SmsReceiver.kt
 → AnalysisViewModel.kt
@@ -215,7 +219,16 @@ SmsReceiver.kt
 ---
 
 ### 🔐 로그인 / 토큰 관리 흐름
+#### 📊 Login and Token Flow
 
+```mermaid
+flowchart LR
+    UI1[LoginScreen] --> VM1[LoginViewModel]
+    VM1 --> AU[AuthRepository]
+    AU --> SV[Server]
+    SV --> AU
+    AU --> UI2[MainScreen]
+```
 ```text
 LoginScreen.kt
 → LoginViewModel.kt
