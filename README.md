@@ -90,31 +90,22 @@ app/
 
 ```mermaid
 flowchart LR
-    %% UI Layer
-    UI[UI Screens (Compose)]
+    UI[UI Screens - Compose]
     VM[ViewModel]
-
-    %% Repository Layer
     REPO[Repository Layer]
 
-    %% Realtime
     SERVICE[RealtimeCallService - Foreground Service]
     WS[WebSocket]
+    SERVER[Server - STT and Phishing Analysis]
 
-    %% Server
-    SERVER[Server (STT · Phishing Analysis)]
-
-    %% Common Flow
     UI --> VM
     VM --> REPO
 
-    %% REST API Flow
     REPO -->|REST API| SERVER
     SERVER -->|Analysis Result| REPO
     REPO --> VM
     VM --> UI
 
-    %% Realtime Flow
     SERVICE -->|PCM Audio 16kHz| REPO
     REPO -->|WebSocket| WS
     WS --> SERVER
