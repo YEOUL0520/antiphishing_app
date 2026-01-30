@@ -11,7 +11,7 @@ import retrofit2.Response
 object ApiClient {
 
     // ✅ 서버 기본 주소
-    const val BASE_URL = "http://13.125.217.37:8000/"
+    const val BASE_URL = "https://gupi99.p-e.kr"
 
     // ✅ WebSocket용 주소 자동 변환
     val WS_BASE_URL: String
