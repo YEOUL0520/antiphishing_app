@@ -26,7 +26,8 @@ data class StampBox(
 data class KeywordInfo(
     val error: Boolean,
     val total_score: Float,
-    val details: List<Any> // 명세에 따라 확장 가능
+    val details: List<Any>,
+    val is_document: Boolean = true
 )
 
 data class LayoutInfo(
