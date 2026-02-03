@@ -27,7 +27,7 @@ fun PhoneAlertCard(
         shape = RoundedCornerShape(10.dp),
         colors = CardDefaults.cardColors(containerColor = Color(0xFFFCFBFF)),
         modifier = Modifier
-            .size(width = 364.dp, height = 124.dp)
+            .size(width = 344.dp, height = 124.dp)
     ) {
         Column(
             modifier = Modifier

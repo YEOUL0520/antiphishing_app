@@ -1,7 +1,6 @@
 package com.example.antiphishingapp.ui.screen
 
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -44,7 +43,7 @@ import com.example.antiphishingapp.network.ApiClient
 import com.example.antiphishingapp.theme.*
 import com.example.antiphishingapp.feature.model.SuspiciousItem
 
-// 메인 화면 – 실제 문서 분석 결과
+// ✅ 메인 화면 – 문서 분석 결과 (FileUploadScreen에서 문서만 이쪽으로 넘겨준다고 가정)
 @Composable
 fun ImageUploadResultScreen(
     navController: NavController,
@@ -57,198 +56,166 @@ fun ImageUploadResultScreen(
 
     val fullImageUrl = ApiClient.BASE_URL.removeSuffix("/") + analysis.url
 
-    // 문서 판별: 서버가 keyword_result 안에 넣어준 is_document 사용
-    val isDocument = !analysis.keyword.error && analysis.keyword.is_document
-
-    // 문서가 아니면 다이얼로그 띄우고 "다른 사진 선택"으로 복귀
-    var showNotDocDialog by remember { mutableStateOf(false) }
-    LaunchedEffect(isDocument) {
-        if (!isDocument) showNotDocDialog = true
-    }
-
-    if (showNotDocDialog) {
-        AlertDialog(
-            onDismissRequest = { /* 필요하면 막아도 됨 */ },
-            title = { Text("문서로 인식되지 않았습니다") },
-            text = { Text("글자를 찾지 못했습니다. 다른 사진(문서)을 선택해 주세요.") },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        showNotDocDialog = false
-                        navController.popBackStack() // 사진 선택 화면으로 복귀
-                    }
-                ) { Text("다른 사진 선택") }
-            }
-        )
-    }
-
     // 팝업 모드 ON/OFF
     var showPopup by remember { mutableStateOf(false) }
 
     // Painter 공유 (팝업에서도 같은 이미지 사용)
     val painter = rememberAsyncImagePainter(fullImageUrl)
+
     val suspiciousItems = generateSuspiciousItems(analysis)
 
     Scaffold(containerColor = Primary100) { padding ->
         Box(modifier = Modifier.fillMaxSize()) {
 
-            /***********************
-             * 1) 전체 화면 기본 콘텐츠
-             ***********************/
-            // 문서일 때만 결과 UI 보여주기 (비문서는 다이얼로그로 복귀 유도)
-            if (isDocument) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+            ) {
+                /***********************
+                 * 상단 위험도 표시
+                 ***********************/
                 Column(
                     modifier = Modifier
-                        .fillMaxSize()
-                        .padding(padding)
+                        .fillMaxWidth()
+                        .padding(horizontal = 24.dp, vertical = 24.dp)
                 ) {
+                    Text(
+                        text = "문서 위조 위험도",
+                        style = MaterialTheme.typography.titleSmall,
+                        color = Grayscale600,
+                        fontWeight = FontWeight.Bold
+                    )
 
-                    /***********************
-                     * 상단 위험도 표시
-                     ***********************/
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 24.dp, vertical = 24.dp)
-                    ) {
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
-                            text = "문서 위조 위험도",
-                            style = MaterialTheme.typography.titleSmall,
-                            color = Grayscale600,
-                            fontWeight = FontWeight.Bold
+                            text = "$forgeryScore%",
+                            style = MaterialTheme.typography.displayMedium.copy(
+                                fontFamily = Pretendard,
+                                fontWeight = FontWeight.Bold,
+                                color = scoreColor
+                            ),
+                            modifier = Modifier.padding(end = 16.dp)
                         )
 
-                        Spacer(modifier = Modifier.height(8.dp))
-
-                        Row(verticalAlignment = Alignment.CenterVertically) {
+                        Column {
                             Text(
-                                text = "$forgeryScore%",
-                                style = MaterialTheme.typography.displayMedium.copy(
-                                    fontFamily = Pretendard,
-                                    fontWeight = FontWeight.Bold,
-                                    color = scoreColor
+                                text = when {
+                                    forgeryScore >= 70 -> "위조 문서일 확률이 높습니다."
+                                    forgeryScore >= 45 -> "위조 문서일 가능성이 있습니다."
+                                    else -> "위조 문서일 가능성이 낮습니다."
+                                },
+                                style = MaterialTheme.typography.bodyMedium.copy(
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = Grayscale900
+                                )
+                            )
+
+                            Text(
+                                text = when {
+                                    forgeryScore >= 70 -> "보이스피싱 등 범죄 목적으로 위조된 문서일 가능성이 높습니다."
+                                    forgeryScore >= 45 -> "주의 깊게 확인해주세요."
+                                    else -> "주요 위조 의심 징후가 탐지되지 않았습니다."
+                                },
+                                style = MaterialTheme.typography.bodyMedium.copy(
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = Grayscale900
                                 ),
-                                modifier = Modifier.padding(end = 16.dp)
+                                modifier = Modifier.padding(top = 2.dp)
                             )
-
-                            Column {
-                                Text(
-                                    text = when {
-                                        forgeryScore >= 70 -> "위조 문서일 확률이 높습니다."
-                                        forgeryScore >= 45 -> "위조 문서일 가능성이 있습니다."
-                                        else -> "위조 문서일 가능성이 낮습니다."
-                                    },
-                                    style = MaterialTheme.typography.bodyMedium.copy(
-                                        fontWeight = FontWeight.SemiBold,
-                                        color = Grayscale900
-                                    )
-                                )
-
-                                Text(
-                                    text = when {
-                                        forgeryScore >= 70 -> "보이스피싱 등 범죄 목적으로 위조된 문서일 가능성이 높습니다."
-                                        forgeryScore >= 45 -> "주의 깊게 확인해주세요."
-                                        else -> "주요 위조 의심 징후가 탐지되지 않았습니다."
-                                    },
-                                    style = MaterialTheme.typography.bodyMedium.copy(
-                                        fontWeight = FontWeight.SemiBold,
-                                        color = Grayscale900
-                                    ),
-                                    modifier = Modifier.padding(top = 2.dp)
-                                )
-                            }
                         }
                     }
+                }
 
-                    /***********************
-                     * 2) 이미지 미리보기 영역
-                     ***********************/
-                    Column(
-                        modifier = Modifier
-                            .weight(1f)
-                            .verticalScroll(scrollState)
-                            .padding(horizontal = 24.dp)
-                    ) {
-
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(320.dp)
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(Grayscale50)
-                        ) {
-                            // 축소된 원본 이미지 표시
-                            AsyncImage(
-                                model = fullImageUrl,
-                                contentDescription = "Uploaded Image",
-                                modifier = Modifier.fillMaxSize(),
-                                contentScale = ContentScale.Fit
-                            )
-
-                            // 버튼 (팝업 띄우기)
-                            Box(
-                                modifier = Modifier
-                                    .align(Alignment.BottomCenter)
-                                    .padding(bottom = 20.dp)
-                            ) {
-                                InteractiveResultButton(
-                                    text = "이미지 탐지 결과 살펴보기",
-                                    onClick = { showPopup = true }
-                                )
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(32.dp))
-
-                        /***********************
-                         * 3) 위조 의심 항목
-                         ***********************/
-                        Text(
-                            text = "위조 의심 항목",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = Grayscale600,
-                            modifier = Modifier.padding(bottom = 12.dp)
-                        )
-
-                        SuspiciousItemsBox(items = suspiciousItems)
-
-                        Spacer(modifier = Modifier.height(32.dp))
-                    }
-
-                    /***********************
-                     * 4) 다른 문서로 다시 분석
-                     ***********************/
+                /***********************
+                 * 2) 이미지 미리보기 영역
+                 ***********************/
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .verticalScroll(scrollState)
+                        .padding(horizontal = 24.dp)
+                ) {
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(vertical = 16.dp),
-                        contentAlignment = Alignment.Center
+                            .height(320.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(Grayscale50)
                     ) {
-                        Text(
-                            text = "다른 문서로 다시 시도해볼까요?",
-                            style = MaterialTheme.typography.bodyMedium.copy(
-                                color = Grayscale500,
-                                fontWeight = FontWeight.Medium
-                            ),
-                            modifier = Modifier.clickable {
-                                navController.popBackStack()
-                            }
+                        // 축소된 원본 이미지 표시
+                        AsyncImage(
+                            model = fullImageUrl,
+                            contentDescription = "Uploaded Image",
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Fit
                         )
+
+                        // 버튼 (팝업 띄우기)
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.BottomCenter)
+                                .padding(bottom = 20.dp)
+                        ) {
+                            InteractiveResultButton(
+                                text = "이미지 탐지 결과 살펴보기",
+                                onClick = { showPopup = true }
+                            )
+                        }
                     }
+
+                    Spacer(modifier = Modifier.height(32.dp))
+
+                    /***********************
+                     * 3) 위조 의심 항목
+                     ***********************/
+                    Text(
+                        text = "위조 의심 항목",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = Grayscale600,
+                        modifier = Modifier.padding(bottom = 12.dp)
+                    )
+
+                    SuspiciousItemsBox(items = suspiciousItems)
+
+                    Spacer(modifier = Modifier.height(32.dp))
                 }
 
-                /*****************************************************
-                 * 5) 전체 화면 팝업 레이어 (원본 이미지 + 박스)
-                 *****************************************************/
-                if (showPopup) {
-                    FullscreenImageOverlay(
-                        imageUrl = fullImageUrl,
-                        fallbackPainter = painter,
-                        boxes = analysis.stamp.boxes,
-                        onClose = { showPopup = false }
+                /***********************
+                 * 4) 다른 문서로 다시 분석
+                 ***********************/
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 16.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "다른 문서로 다시 시도해볼까요?",
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            color = Grayscale500,
+                            fontWeight = FontWeight.Medium
+                        ),
+                        modifier = Modifier.clickable {
+                            navController.popBackStack()
+                        }
                     )
                 }
+            }
+
+            /*****************************************************
+             * 5) 전체 화면 팝업 레이어 (원본 이미지 + 박스)
+             *****************************************************/
+            if (showPopup) {
+                FullscreenImageOverlay(
+                    imageUrl = fullImageUrl,
+                    fallbackPainter = painter,
+                    boxes = analysis.stamp.boxes,
+                    onClose = { showPopup = false }
+                )
             }
         }
     }
@@ -375,21 +342,16 @@ fun StampBoxOverlay(
     }
 }
 
-// 기타 컴포저블
 @Composable
 fun calculateScoreColor(score: Int): Color {
-    // 점수 비율 (0.0f ~ 1.0f)
     val ratio = score.coerceIn(0, 100) / 100f
 
     return when {
         ratio <= 0.5f -> {
-            // 0% → 50% : 빨강 → 노랑
             val t = ratio / 0.5f
             lerp(GradientB_Start, GradientB_Mid, t)
         }
-
         else -> {
-            // 50% → 100% : 노랑 → 초록
             val t = (ratio - 0.5f) / 0.5f
             lerp(GradientB_Mid, GradientB_End, t)
         }
