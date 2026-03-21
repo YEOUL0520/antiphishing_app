@@ -6,7 +6,7 @@ package com.example.antiphishingapp.network
 object AppConfig {
 
     // --- 백엔드 서버 주소 ---
-    const val BASE_URL = "http://13.125.217.37:8000/"
+    const val BASE_URL = "https://gupi99.p-e.kr/"
 
     // --- 소셜 로그인 시작 URL ---
     const val KAKAO_LOGIN_URL = "${BASE_URL}auth/kakao/login"
