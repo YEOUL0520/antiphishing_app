@@ -11,6 +11,9 @@ class WebSocketClient(
 ) {
     private val gson = Gson()
     private var webSocket: WebSocket? = null
+
+    private var isFirstCaptionLogged = false
+
     private val client = OkHttpClient()
 
     fun connect() {
@@ -23,7 +26,24 @@ class WebSocketClient(
             override fun onMessage(ws: WebSocket, text: String) {
                 Log.d("WebSocketClient", "📩 수신: $text")   // ← 이 줄 추가
                 try {
+                    val receiveTime = System.currentTimeMillis()
                     val msg = gson.fromJson(text, RealtimeMessage::class.java)
+
+                    // 1. 첫 자막 표시 시간 측정 (텍스트가 포함된 첫 메시지 기준)
+                    if (!isFirstCaptionLogged && !msg.text.isNullOrBlank()) {
+                        val firstCaptionLatency = receiveTime - RealtimeCallService.streamStartTime
+                        Log.d("WebSocketClient", "⏱️ [PERF] 2. FIRST_CAPTION_RECEIVED")
+                        Log.d("WebSocketClient", "📊 [RESULT] 첫 자막 표시 시간: ${firstCaptionLatency}ms")
+                        isFirstCaptionLogged = true
+                    }
+
+                    // 2. 위험 경고 시간 측정 (위험 점수가 기준치 이상인 경우)
+                    val isPhishingDetected = (msg.risk_probability ?: 0.0) >= 70.0 || msg.is_phishing == true
+                    if (isPhishingDetected) {
+                        val warningLatency = receiveTime - RealtimeCallService.streamStartTime
+                        Log.d("WebSocketClient", "⏱️ [PERF] 3. RISK_WARNING_DETECTED")
+                        Log.d("WebSocketClient", "📊 [RESULT] 위험 경고 지연 시간(누적): ${warningLatency}ms")
+                    }
                     onMessageReceived(msg)
                 } catch (e: Exception) {
                     Log.e("WebSocketClient", "메시지 파싱 오류: ${e.message}")

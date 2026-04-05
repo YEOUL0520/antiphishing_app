@@ -26,6 +26,10 @@ import androidx.annotation.RequiresPermission
 class RealtimeCallService : Service() {
 
     private var audioRecord: AudioRecord? = null
+    companion object {
+        var streamStartTime: Long = 0L
+        var isFirstChunkSent: Boolean = false
+    }
     private var recordJob: Job? = null
     private val repository = RealtimeRepository()
     private val sampleRate = 16000
@@ -172,6 +176,11 @@ class RealtimeCallService : Service() {
                 Log.d("AudioDebug", "maxVal=$maxVal")
                 if (bytesRead > 0) {
                     val chunk: ByteString = buffer.toByteString(0, bytesRead)
+                    if (!isFirstChunkSent) {
+                        streamStartTime = System.currentTimeMillis()
+                        isFirstChunkSent = true
+                        Log.d("RealtimeCallService", "⏱️ [PERF] 1. VOICE_STREAM_START: $streamStartTime")
+                    }
                     repository.sendPcm(chunk)
                 } else {
                     delay(10)
