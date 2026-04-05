@@ -35,9 +35,12 @@ class SmsReceiver : BroadcastReceiver() {
                 val rawText = sb.toString().trim()
                 Log.d("SmsReceiver", "📩 Received SMS: $sender / ${rawText.take(80)}...")
 
+                val smsStartTime = System.currentTimeMillis()
+                Log.d("SmsReceiver", "⏱️ [PERF] 1. SMS_RECEIVE_START: $smsStartTime")
+
                 // 비동기로 서버 전송
                 CoroutineScope(Dispatchers.IO).launch {
-                    sendToServer(context!!, sender ?: "unknown", rawText)
+                    sendToServer(context!!, sender ?: "unknown", rawText, smsStartTime)
                 }
             }
         } catch (e: Exception) {
@@ -45,7 +48,7 @@ class SmsReceiver : BroadcastReceiver() {
         }
     }
 
-    private fun sendToServer(context: Context, sender: String, rawText: String) {
+    private fun sendToServer(context: Context, sender: String, rawText: String, startTime: Long) {
         try {
             // 1️⃣ 해시 생성
             val salt = SaltKeeper.getSalt(context)
@@ -65,6 +68,10 @@ class SmsReceiver : BroadcastReceiver() {
             )
 
             // 4️⃣ 서버 전송
+
+            val apiStartTime = System.currentTimeMillis()
+            Log.d("SmsReceiver", "⏱️ [PERF] 2. API_REQUEST_START: $apiStartTime")
+
             ApiClient.apiService.detectSmsJson(payload).enqueue(object :
                 Callback<SmsDetectResponse> {
                 override fun onResponse(
@@ -72,6 +79,14 @@ class SmsReceiver : BroadcastReceiver() {
                     response: Response<SmsDetectResponse>
                 ) {
                     if (response.isSuccessful) {
+
+                        val endTime = System.currentTimeMillis()
+                        val apiLatency = endTime - apiStartTime
+                        val totalLatency = endTime - startTime
+                        Log.d("SmsReceiver", "⏱️ [PERF] 3. API_RESPONSE_RECEIVED")
+                        Log.d("SmsReceiver", "📊 [RESULT] SMS API 응답 시간: ${apiLatency}ms")
+                        Log.d("SmsReceiver", "📊 [RESULT] SMS 전체 처리 시간: ${totalLatency}ms")
+
                         val result = response.body()
                         val score = (result?.phishing_score as? Number)?.toInt() ?: 0
                         val foundKeywords = result?.keywords_found ?: emptyList()
