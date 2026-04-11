@@ -26,13 +26,20 @@ class VoiceAnalysisViewModel : ViewModel() {
 
 
     fun analyzeVoice(file: File) {
+
+        val totalStartTime = System.currentTimeMillis()
+        android.util.Log.d("VoicePerformance", "[PERF] 0. TOTAL_PROCESS_START: $totalStartTime")
+
         _loading.value = true
         _error.value = null
 
         viewModelScope.launch {
             repository.uploadVoiceFile(
                 file = file,
-                onResult = { response ->
+
+                startTime = totalStartTime,
+                onResult = { response, startTime ->
+                    
                     _loading.postValue(false)
 
                     if (response == null) {
@@ -40,7 +47,17 @@ class VoiceAnalysisViewModel : ViewModel() {
                         return@uploadVoiceFile
                     }
 
+                    val logicStartTime = System.currentTimeMillis()
                     val uiResult = convertToUiResult(response)
+                    val logicEndTime = System.currentTimeMillis()
+                    val warningLatency = logicEndTime - logicStartTime
+                    
+                    android.util.Log.d("VoicePerformance", "[RESULT] 통화 녹음본 위험 경고 시간: ${warningLatency}ms")
+
+                    val totalEndTime = System.currentTimeMillis()
+                    val endToEndLatency = totalEndTime - startTime
+                    android.util.Log.d("VoicePerformance", "[RESULT] 통화 녹음본 End-to-End 지연: ${endToEndLatency}ms")
+                    
                     _result.postValue(uiResult)
                 },
                 onError = { err ->
