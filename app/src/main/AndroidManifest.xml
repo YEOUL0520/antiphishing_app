@@ -42,7 +42,10 @@
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:theme="@style/Theme.AntiPhishingApp">
+        android:theme="@style/Theme.AntiPhishingApp"
+
+        android:usesCleartextTraffic="true">
+    <!-- 로컬 http 설정 -->
 
     <!-- ✅ 메인 액티비티 -->
         <activity
