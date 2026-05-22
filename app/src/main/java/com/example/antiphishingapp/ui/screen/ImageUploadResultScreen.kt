@@ -38,12 +38,13 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.ui.text.font.FontWeight
 import com.example.antiphishingapp.R
 import com.example.antiphishingapp.feature.model.AnalysisResponse
-import com.example.antiphishingapp.feature.model.StampBox
 import com.example.antiphishingapp.network.ApiClient
 import com.example.antiphishingapp.theme.*
 import com.example.antiphishingapp.feature.model.SuspiciousItem
 
-// ✅ 메인 화면 – 문서 분석 결과 (FileUploadScreen에서 문서만 이쪽으로 넘겨준다고 가정)
+// ── 기존 import (주석처리) ───────────────────────────────────────────
+// import com.example.antiphishingapp.feature.model.StampBox
+
 @Composable
 fun ImageUploadResultScreen(
     navController: NavController,
@@ -51,17 +52,23 @@ fun ImageUploadResultScreen(
 ) {
     val scrollState = rememberScrollState()
 
-    val forgeryScore = (analysis.final_risk * 100).toInt()
+    // ── 기존 위험도 계산 (주석처리) ──────────────────────────────────
+    // val forgeryScore = (analysis.final_risk * 100).toInt()
+
+    // ── 새로운 위험도 계산 ────────────────────────────────────────────
+    // score: 양수(정상)~음수(위조), 대략 -0.5 ~ +0.5 범위
+    // 위험도% = score가 낮을수록 높게, 높을수록 낮게 변환
+//    val forgeryScore = ((-analysis.forgery.score + 0.5f) * 100f)
+//        .coerceIn(0f, 100f).toInt()
+    val forgeryScore = (99f - (analysis.forgery.score + 0.25f) * 196f)
+        .coerceIn(1f, 99f).toInt()
     val scoreColor = calculateScoreColor(forgeryScore)
+
 
     val fullImageUrl = ApiClient.BASE_URL.removeSuffix("/") + analysis.url
 
-    // 팝업 모드 ON/OFF
     var showPopup by remember { mutableStateOf(false) }
-
-    // Painter 공유 (팝업에서도 같은 이미지 사용)
     val painter = rememberAsyncImagePainter(fullImageUrl)
-
     val suspiciousItems = generateSuspiciousItems(analysis)
 
     Scaffold(containerColor = Primary100) { padding ->
@@ -130,7 +137,7 @@ fun ImageUploadResultScreen(
                 }
 
                 /***********************
-                 * 2) 이미지 미리보기 영역
+                 * 이미지 미리보기 영역
                  ***********************/
                 Column(
                     modifier = Modifier
@@ -145,7 +152,6 @@ fun ImageUploadResultScreen(
                             .clip(RoundedCornerShape(12.dp))
                             .background(Grayscale50)
                     ) {
-                        // 축소된 원본 이미지 표시
                         AsyncImage(
                             model = fullImageUrl,
                             contentDescription = "Uploaded Image",
@@ -153,7 +159,6 @@ fun ImageUploadResultScreen(
                             contentScale = ContentScale.Fit
                         )
 
-                        // 버튼 (팝업 띄우기)
                         Box(
                             modifier = Modifier
                                 .align(Alignment.BottomCenter)
@@ -169,7 +174,7 @@ fun ImageUploadResultScreen(
                     Spacer(modifier = Modifier.height(32.dp))
 
                     /***********************
-                     * 3) 위조 의심 항목
+                     * 위조 의심 항목
                      ***********************/
                     Text(
                         text = "위조 의심 항목",
@@ -185,7 +190,7 @@ fun ImageUploadResultScreen(
                 }
 
                 /***********************
-                 * 4) 다른 문서로 다시 분석
+                 * 다른 문서로 다시 분석
                  ***********************/
                 Box(
                     modifier = Modifier
@@ -206,14 +211,12 @@ fun ImageUploadResultScreen(
                 }
             }
 
-            /*****************************************************
-             * 5) 전체 화면 팝업 레이어 (원본 이미지 + 박스)
-             *****************************************************/
+            /*****************************
+             * 전체 화면 팝업 (이미지만)
+             *****************************/
             if (showPopup) {
                 FullscreenImageOverlay(
                     imageUrl = fullImageUrl,
-                    fallbackPainter = painter,
-                    boxes = analysis.stamp.boxes,
                     onClose = { showPopup = false }
                 )
             }
@@ -221,58 +224,34 @@ fun ImageUploadResultScreen(
     }
 }
 
-// 전체 화면 오버레이 팝업
+// ── 기존 FullscreenImageOverlay (stamp boxes 포함, 주석처리) ──────────
+// @Composable
+// fun FullscreenImageOverlay(
+//     imageUrl: String,
+//     fallbackPainter: Painter,
+//     boxes: List<StampBox>,
+//     onClose: () -> Unit
+// ) { ... }
+
+// ── 새로운 FullscreenImageOverlay (이미지만 표시) ─────────────────────
 @Composable
 fun FullscreenImageOverlay(
     imageUrl: String,
-    fallbackPainter: Painter,
-    boxes: List<StampBox>,
     onClose: () -> Unit
 ) {
-    // Coil에서 확정된 "실제 이미지(원본) 크기" 저장
-    var originalSize by remember { mutableStateOf<IntSize?>(null) }
-
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(Color.Black.copy(alpha = 0.7f)),
         contentAlignment = Alignment.Center
     ) {
-
-        // 중앙 이미지 + 박스 오버레이
-        Box(
+        AsyncImage(
+            model = imageUrl,
+            contentDescription = null,
             modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center
-        ) {
-            /**
-             * onSuccess로 drawable intrinsicWidth/Height 확보 (coil-compose:2.4.0)
-             * - 서버 bbox가 "원본 픽셀" 기준이므로, 이 크기를 overlay 기준으로 사용
-             */
-            AsyncImage(
-                model = imageUrl,
-                contentDescription = null,
-                modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Fit,
-                onSuccess = { success ->
-                    val d = success.result.drawable
-                    val w = d.intrinsicWidth
-                    val h = d.intrinsicHeight
-                    if (w > 0 && h > 0) {
-                        originalSize = IntSize(w, h)
-                    }
-                }
-            )
+            contentScale = ContentScale.Fit
+        )
 
-            // 박스도 같은 영역 위에 그리기 (Fit + offset 보정)
-            StampBoxOverlay(
-                originalSize = originalSize,
-                fallbackPainter = fallbackPainter,
-                boxes = boxes,
-                modifier = Modifier.fillMaxSize()
-            )
-        }
-
-        // 닫기 버튼
         Icon(
             imageVector = Icons.Default.Close,
             contentDescription = "닫기",
@@ -288,64 +267,9 @@ fun FullscreenImageOverlay(
     }
 }
 
-/**
- * 박스 오버레이
- * 1) Fit 스케일 + offset 보정 적용
- * 2) "원본 이미지 크기"는 Coil onSuccess로 받은 originalSize를 우선 사용
- *    - originalSize가 아직 null이면 fallbackPainter.intrinsicSize로 임시 처리
- */
-@Composable
-fun StampBoxOverlay(
-    originalSize: IntSize?,
-    fallbackPainter: Painter,
-    boxes: List<StampBox>,
-    modifier: Modifier = Modifier
-) {
-    BoxWithConstraints(modifier = modifier) {
-        val renderW = constraints.maxWidth.toFloat()
-        val renderH = constraints.maxHeight.toFloat()
-        if (renderW <= 0f || renderH <= 0f) return@BoxWithConstraints
-
-        val (imgW, imgH) = if (originalSize != null && originalSize.width > 0 && originalSize.height > 0) {
-            originalSize.width.toFloat() to originalSize.height.toFloat()
-        } else {
-            // fallback (정확하지 않을 수 있지만, originalSize가 잡히면 자동으로 재컴포즈되어 교정됨)
-            val w = fallbackPainter.intrinsicSize.width
-            val h = fallbackPainter.intrinsicSize.height
-            if (w <= 0f || h <= 0f) return@BoxWithConstraints
-            w to h
-        }
-
-        // ContentScale.Fit 수학: min 스케일 + 중앙 offset(레터박스)
-        val scale = minOf(renderW / imgW, renderH / imgH)
-        val drawW = imgW * scale
-        val drawH = imgH * scale
-        val offsetX = (renderW - drawW) / 2f
-        val offsetY = (renderH - drawH) / 2f
-
-        Canvas(modifier = Modifier.fillMaxSize()) {
-            boxes.forEach { b ->
-                drawRect(
-                    color = Color.Red,
-                    topLeft = Offset(
-                        x = offsetX + b.x * scale,
-                        y = offsetY + b.y * scale
-                    ),
-                    size = Size(
-                        width = b.width * scale,
-                        height = b.height * scale
-                    ),
-                    style = Stroke(width = 3.dp.toPx(), cap = StrokeCap.Round)
-                )
-            }
-        }
-    }
-}
-
 @Composable
 fun calculateScoreColor(score: Int): Color {
     val ratio = score.coerceIn(0, 100) / 100f
-
     return when {
         ratio <= 0.5f -> {
             val t = ratio / 0.5f
@@ -429,13 +353,25 @@ fun SuspiciousItemsBox(items: List<SuspiciousItem>) {
     }
 }
 
+// ── 기존 generateSuspiciousItems (주석처리) ───────────────────────────
+// fun generateSuspiciousItems(analysis: AnalysisResponse): List<SuspiciousItem> {
+//     val list = mutableListOf<SuspiciousItem>()
+//     if (analysis.stamp.count > 0) list.add(SuspiciousItem("직인 탐지 영역 ${analysis.stamp.count}개 발견됨."))
+//     if (!analysis.keyword.error && analysis.keyword.total_score > 0)
+//         list.add(SuspiciousItem("위험 키워드 감지: 총 점수 ${analysis.keyword.total_score}"))
+//     if (!analysis.layout.error && analysis.layout.score > 0.3f)
+//         list.add(SuspiciousItem("문서 레이아웃이 비정상적으로 감지되었습니다."))
+//     if (list.isEmpty()) list.add(SuspiciousItem("위조 의심 항목이 없습니다."))
+//     return list
+// }
+
+// ── 새로운 generateSuspiciousItems ───────────────────────────────────
 fun generateSuspiciousItems(analysis: AnalysisResponse): List<SuspiciousItem> {
     val list = mutableListOf<SuspiciousItem>()
-    if (analysis.stamp.count > 0) list.add(SuspiciousItem("직인 탐지 영역 ${analysis.stamp.count}개 발견됨."))
-    if (!analysis.keyword.error && analysis.keyword.total_score > 0)
-        list.add(SuspiciousItem("위험 키워드 감지: 총 점수 ${analysis.keyword.total_score}"))
-    if (!analysis.layout.error && analysis.layout.score > 0.3f)
-        list.add(SuspiciousItem("문서 레이아웃이 비정상적으로 감지되었습니다."))
-    if (list.isEmpty()) list.add(SuspiciousItem("위조 의심 항목이 없습니다."))
+    if (analysis.forgery.is_forged) {
+        list.add(SuspiciousItem("AI 분석 결과 위조 문서로 판정되었습니다. (점수: ${analysis.forgery.score})"))
+    } else {
+        list.add(SuspiciousItem("위조 의심 항목이 없습니다."))
+    }
     return list
 }
