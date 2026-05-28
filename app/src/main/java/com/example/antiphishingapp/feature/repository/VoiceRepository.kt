@@ -11,6 +11,7 @@ import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
 import java.io.File
+import java.util.concurrent.TimeUnit
 
 /**
  * VoiceRepository
@@ -43,15 +44,23 @@ class VoiceRepository {
             val apiStartTime = System.currentTimeMillis()
             android.util.Log.d("VoicePerformance", "[PERF] 1. API_REQUEST_START: $apiStartTime")
 
-            api.analyzeAudioFile(mediaPart, langPart, methodPart)
-                .enqueue(object : Callback<ResponseBody> {
+            val call = api.analyzeAudioFile(mediaPart, langPart, methodPart)
+            // 장시간 대기로 로딩이 끝나지 않는 상황을 방지
+            call.timeout().timeout(125, TimeUnit.SECONDS)
+            call.enqueue(object : Callback<ResponseBody> {
 
                     override fun onResponse(
                         call: Call<ResponseBody>,
                         response: Response<ResponseBody>
                     ) {
                         if (!response.isSuccessful) {
-                            onError(Exception("서버 오류: ${response.code()}"))
+                            val errorDetail = response.errorBody()?.string()?.takeIf { it.isNotBlank() }
+                            val message = if (errorDetail != null) {
+                                "서버 오류(${response.code()}): $errorDetail"
+                            } else {
+                                "서버 오류: ${response.code()}"
+                            }
+                            onError(Exception(message))
                             return
                         }
 
@@ -80,7 +89,13 @@ class VoiceRepository {
                     }
 
                     override fun onFailure(call: Call<ResponseBody>, t: Throwable) {
-                        onError(t)
+                        val msg = t.message ?: "알 수 없는 네트워크 오류"
+                        // 타임아웃 케이스는 사용자에게 더 명확히 전달
+                        if (msg.contains("timeout", ignoreCase = true)) {
+                            onError(Exception("음성 분석 응답 대기 시간이 초과되었습니다. 파일 길이를 줄이거나 네트워크 상태를 확인해 주세요."))
+                        } else {
+                            onError(t)
+                        }
                     }
                 })
 
