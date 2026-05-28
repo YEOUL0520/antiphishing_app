@@ -40,9 +40,10 @@ object ApiClient {
     private val okHttpClient: OkHttpClient by lazy {
         OkHttpClient.Builder()
             .connectTimeout(30, TimeUnit.SECONDS)
-            // 음성 업로드(STT+KoBERT)는 서버에서 최대 ~2분 걸릴 수 있음
-            .readTimeout(180, TimeUnit.SECONDS)
-            .writeTimeout(180, TimeUnit.SECONDS)
+            // 무한 대기를 피하기 위해 전체 호출 시간 제한을 둡니다.
+            .callTimeout(130, TimeUnit.SECONDS)
+            .readTimeout(120, TimeUnit.SECONDS)
+            .writeTimeout(120, TimeUnit.SECONDS)
             .build()
     }
 
