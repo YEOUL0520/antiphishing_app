@@ -29,13 +29,19 @@ class VoiceRepository {
         file: File,
         language: String = "ko-KR",
         method: String = "hybrid",
-        onResult: (VoiceAnalysisResponse?) -> Unit,
+        
+        startTime: Long, 
+        onResult: (VoiceAnalysisResponse?, Long) -> Unit,
+        
         onError: (Throwable) -> Unit
     ) {
         try {
             val mediaPart = audioToMultipart(file)
             val langPart = language.toRequestBody("text/plain".toMediaTypeOrNull())
             val methodPart = method.toRequestBody("text/plain".toMediaTypeOrNull())
+
+            val apiStartTime = System.currentTimeMillis()
+            android.util.Log.d("VoicePerformance", "[PERF] 1. API_REQUEST_START: $apiStartTime")
 
             api.analyzeAudioFile(mediaPart, langPart, methodPart)
                 .enqueue(object : Callback<ResponseBody> {
@@ -49,6 +55,11 @@ class VoiceRepository {
                             return
                         }
 
+                        val apiEndTime = System.currentTimeMillis()
+                        val apiLatency = apiEndTime - apiStartTime
+                        android.util.Log.d("VoicePerformance", "[PERF] 2. API_RESPONSE_RECEIVED")
+                        android.util.Log.d("VoicePerformance", "[RESULT] 통화 녹음본 결과 수신 대기 시간: ${apiLatency}ms")
+
                         val jsonString = response.body()?.string()
                         if (jsonString == null) {
                             onError(Exception("서버 응답이 비어 있습니다."))
@@ -61,7 +72,7 @@ class VoiceRepository {
                                 jsonString,
                                 VoiceAnalysisResponse::class.java
                             )
-                            onResult(parsed)
+                            onResult(parsed, startTime)
 
                         } catch (e: Exception) {
                             onError(Exception("JSON 파싱 오류: ${e.message}"))
