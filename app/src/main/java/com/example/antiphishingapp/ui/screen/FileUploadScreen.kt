@@ -76,8 +76,10 @@ fun FileUploadScreen(
 
     val voiceLoading by voiceAnalysisViewModel.loading.observeAsState(false)
     val voiceResult by voiceAnalysisViewModel.result.observeAsState()
+    val voiceError by voiceAnalysisViewModel.error.observeAsState()
 
     val context = LocalContext.current
+    var voiceErrorDialog by remember { mutableStateOf<String?>(null) }
 
     var showNotDocOverlay by remember { mutableStateOf(false) }
 
@@ -91,6 +93,13 @@ fun FileUploadScreen(
         if (uri != null) {
             val file = uriToTempFile(context, uri)
             voiceAnalysisViewModel.analyzeVoice(file)
+        }
+    }
+
+    LaunchedEffect(voiceError) {
+        voiceError?.let { msg ->
+            voiceErrorDialog = msg
+            voiceAnalysisViewModel.clearError()
         }
     }
 
@@ -112,7 +121,7 @@ fun FileUploadScreen(
     //     }
     // }
 
-    // 서버 결과 받아오기 및 시간 측정
+    // ---- Image result (문서 여부 판별 → 분기) ----
     LaunchedEffect(result) {
         result?.let { analysis ->
             if (serverStartTime > 0L) {
@@ -180,6 +189,23 @@ fun FileUploadScreen(
                     Modifier.fillMaxSize().background(Grayscale300.copy(alpha = 0.2f)),
                     contentAlignment = Alignment.Center
                 ) { CircularProgressIndicator(color = Primary900) }
+            }
+
+            voiceErrorDialog?.let { errMsg ->
+                Box(
+                    Modifier
+                        .fillMaxSize()
+                        .background(Grayscale300.copy(alpha = 0.35f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    FailureDialogCard(
+                        title = "음성 분석에 실패했습니다",
+                        message = errMsg,
+                        confirmText = "확인",
+                        confirmEnabled = true,
+                        onConfirm = { voiceErrorDialog = null }
+                    )
+                }
             }
 
             // 실패 오버레이
