@@ -103,6 +103,13 @@ fun FileUploadScreen(
         }
     }
 
+    LaunchedEffect(voiceResult) {
+        voiceResult?.let { result ->
+            onVoiceUploadSuccess(result)
+            voiceAnalysisViewModel.resetResult()
+        }
+    }
+
     // ── 이미지 업로드: 선택 즉시 바로 서버로 전송 ────────────────────
     val pickImageLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         if (uri != null) {
