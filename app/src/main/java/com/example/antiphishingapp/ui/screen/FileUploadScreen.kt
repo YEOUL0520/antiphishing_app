@@ -101,8 +101,10 @@ fun FileUploadScreen(
 
     val voiceLoading by voiceAnalysisViewModel.loading.observeAsState(false)
     val voiceResult by voiceAnalysisViewModel.result.observeAsState()
+    val voiceError by voiceAnalysisViewModel.error.observeAsState()
 
     val context = LocalContext.current
+    var voiceErrorDialog by remember { mutableStateOf<String?>(null) }
 
     // 문서 아닌 이미지일 때 오버레이 표시
     var showNotDocOverlay by remember { mutableStateOf(false) }
@@ -129,6 +131,13 @@ fun FileUploadScreen(
         voiceResult?.let { r ->
             onVoiceUploadSuccess(r)
             voiceAnalysisViewModel.resetResult()
+        }
+    }
+
+    LaunchedEffect(voiceError) {
+        voiceError?.let { msg ->
+            voiceErrorDialog = msg
+            voiceAnalysisViewModel.clearError()
         }
     }
 
@@ -223,6 +232,23 @@ fun FileUploadScreen(
             // Back 버튼 입력시 오버레이를 제거 (FileUploadScreen으로 돌아가도록)
             BackHandler(enabled = showNotDocOverlay) {
                 showNotDocOverlay = false
+            }
+
+            voiceErrorDialog?.let { errMsg ->
+                Box(
+                    Modifier
+                        .fillMaxSize()
+                        .background(Grayscale300.copy(alpha = 0.35f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    FailureDialogCard(
+                        title = "음성 분석에 실패했습니다",
+                        message = errMsg,
+                        confirmText = "확인",
+                        confirmEnabled = true,
+                        onConfirm = { voiceErrorDialog = null }
+                    )
+                }
             }
 
             if (showNotDocOverlay) {

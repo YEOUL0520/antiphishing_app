@@ -6,23 +6,25 @@ data class VoiceAnalysisResponse(
 )
 
 data class Transcription(
-    val text: String,
-    val confidence: Double,
-    val speaker: String?,
-    val stt_result: SttResult
+    val text: String? = null,
+    val confidence: Double? = null,
+    val speaker: String? = null,
+    val stt_result: SttResult? = null
 )
 
+/** Clova STT 응답 필드가 버전마다 달라질 수 있어 모두 옵션 처리 */
 data class SttResult(
-    val result: String,
-    val message: String,
-    val token: String,
-    val progress: Int
+    val result: String? = null,
+    val message: String? = null,
+    val token: String? = null,
+    val progress: Int? = null
 )
 
 data class PhishingAnalysis(
-    val immediate: Immediate,
-    val comprehensive: Comprehensive,
-    val warning_message: String?
+    val immediate: Immediate? = null,
+    val comprehensive: Comprehensive? = null,
+    val warning_message: String? = null,
+    val error: String? = null
 )
 
 data class Immediate(

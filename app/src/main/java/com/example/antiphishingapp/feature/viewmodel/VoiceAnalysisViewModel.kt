@@ -56,20 +56,28 @@ class VoiceAnalysisViewModel : ViewModel() {
      */
     private fun convertToUiResult(res: VoiceAnalysisResponse): VoiceUiResult {
 
+        val imm = res.phishing_analysis.immediate
+        val comp = res.phishing_analysis.comprehensive
+
         // 1️⃣ 위험도 계산
-        val lvl = res.phishing_analysis.immediate.level * 25
-        val mlScore = (res.phishing_analysis.comprehensive.confidence * 100).toInt()
+        val lvl = (imm?.level ?: 0) * 25
+        val mlScore = ((comp?.confidence ?: 0.0) * 100).toInt()
         val riskScore = maxOf(lvl, mlScore)
 
         // 2️⃣ 의심 항목 자동 생성
         val suspiciousMessages = mutableListOf<String>()
-        val transcript = res.transcription.text
+        val transcript = res.transcription.text.orEmpty()
 
-        if (res.phishing_analysis.immediate.level > 0) {
+        res.phishing_analysis.error?.takeIf { it.isNotBlank() }?.let { suspiciousMessages.add(it) }
+        res.phishing_analysis.warning_message?.takeIf { it.isNotBlank() }?.let {
+            if (res.phishing_analysis.error == null) suspiciousMessages.add(it)
+        }
+
+        if ((imm?.level ?: 0) > 0) {
             suspiciousMessages.add("보이스피싱 주요 키워드가 포함되었습니다.")
         }
 
-        if (mlScore > 30) {
+        if (mlScore > 30 && comp != null) {
             suspiciousMessages.add("텍스트 분석 모델에서 위험 확률이 높게 감지되었습니다.")
         }
 
@@ -98,5 +106,9 @@ class VoiceAnalysisViewModel : ViewModel() {
 
     fun resetResult() {
         _result.value = null
+    }
+
+    fun clearError() {
+        _error.value = null
     }
 }
