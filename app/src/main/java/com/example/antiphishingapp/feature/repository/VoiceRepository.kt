@@ -22,7 +22,7 @@ import java.io.File
  */
 class VoiceRepository {
 
-    private val api = ApiClient.apiService
+    private val api = ApiClient.aiApiService
     private val gson = Gson()
 
     fun uploadVoiceFile(

@@ -10,22 +10,24 @@ import retrofit2.Response
 
 object ApiClient {
 
-    // ✅ 서버 기본 주소
+    // ✅ API 서버(인증/문서 게이트웨이) 기본 주소
 //    const val BASE_URL = "https://gupi99.p-e.kr"
-    // 로컬 테스트용 주소
     const val BASE_URL = "http://10.0.2.2:8000"
 
+    // ✅ AI 서버(음성/SMS/STT) 기본 주소
+    const val AI_BASE_URL = "http://10.0.2.2:8001"
+
     // ✅ WebSocket용 주소 자동 변환
-    val WS_BASE_URL: String
+    val AI_WS_BASE_URL: String
         get() = when {
-            BASE_URL.startsWith("https://") -> BASE_URL.replaceFirst("https://", "wss://")
-            BASE_URL.startsWith("http://") -> BASE_URL.replaceFirst("http://", "ws://")
-            else -> BASE_URL
+            AI_BASE_URL.startsWith("https://") -> AI_BASE_URL.replaceFirst("https://", "wss://")
+            AI_BASE_URL.startsWith("http://") -> AI_BASE_URL.replaceFirst("http://", "ws://")
+            else -> AI_BASE_URL
         }
 
     // ✅ WebSocket URL Helper
     fun wsUrl(path: String): String {
-        val base = WS_BASE_URL.removeSuffix("/")
+        val base = AI_WS_BASE_URL.removeSuffix("/")
         val cleanPath = path.removePrefix("/")
         return "$base/$cleanPath"
     }
@@ -57,8 +59,21 @@ object ApiClient {
             .build()
     }
 
+    // ✅ AI 서버용 Retrofit 인스턴스
+    private val aiRetrofit: Retrofit by lazy {
+        Retrofit.Builder()
+            .baseUrl(AI_BASE_URL)
+            .client(okHttpClient)
+            .addConverterFactory(GsonConverterFactory.create())
+            .build()
+    }
+
     val apiService: ApiService by lazy {
         retrofit.create(ApiService::class.java)
+    }
+
+    val aiApiService: ApiService by lazy {
+        aiRetrofit.create(ApiService::class.java)
     }
 
     suspend fun signup(request: SignupRequest): Response<UserResponse> {

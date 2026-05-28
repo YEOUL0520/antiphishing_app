@@ -72,7 +72,7 @@ class SmsReceiver : BroadcastReceiver() {
             val apiStartTime = System.currentTimeMillis()
             Log.d("SmsReceiver", "⏱️ [PERF] 2. API_REQUEST_START: $apiStartTime")
 
-            ApiClient.apiService.detectSmsJson(payload).enqueue(object :
+            ApiClient.aiApiService.detectSmsJson(payload).enqueue(object :
                 Callback<SmsDetectResponse> {
                 override fun onResponse(
                     call: Call<SmsDetectResponse>,
