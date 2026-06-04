@@ -3,7 +3,7 @@ package com.example.antiphishingapp.feature.repository
 import com.example.antiphishingapp.feature.model.VoiceAnalysisResponse
 import com.example.antiphishingapp.network.ApiClient
 import com.example.antiphishingapp.utils.audioToMultipart
-import com.google.gson.Gson
+import android.util.Log
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.ResponseBody
@@ -24,8 +24,6 @@ import java.util.concurrent.TimeUnit
 class VoiceRepository {
 
     private val api = ApiClient.aiApiService
-    private val gson = Gson()
-
     fun uploadVoiceFile(
         file: File,
         language: String = "ko-KR",
@@ -76,14 +74,11 @@ class VoiceRepository {
                         }
 
                         try {
-                            // JSON → Data Class 변환
-                            val parsed = gson.fromJson(
-                                jsonString,
-                                VoiceAnalysisResponse::class.java
-                            )
+                            val parsed = VoiceResponseParser.parse(jsonString)
+                            Log.d("VoiceRepository", "analyze-audio parsed OK, text.len=${parsed.transcription.text?.length ?: 0}")
                             onResult(parsed, startTime)
-
                         } catch (e: Exception) {
+                            Log.e("VoiceRepository", "JSON parse fail: ${e.message}, head=${jsonString.take(400)}")
                             onError(Exception("JSON 파싱 오류: ${e.message}"))
                         }
                     }

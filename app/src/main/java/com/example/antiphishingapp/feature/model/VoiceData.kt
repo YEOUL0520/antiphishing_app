@@ -1,8 +1,8 @@
 package com.example.antiphishingapp.feature.model
 
 data class VoiceAnalysisResponse(
-    val transcription: Transcription,
-    val phishing_analysis: PhishingAnalysis
+    val transcription: Transcription = Transcription(),
+    val phishing_analysis: PhishingAnalysis = PhishingAnalysis()
 )
 
 data class Transcription(
@@ -28,16 +28,16 @@ data class PhishingAnalysis(
 )
 
 data class Immediate(
-    val level: Int,
-    val probability: Double,
-    val phishing_type: String?,
-    val keywords: List<String>,
-    val method: String
+    val level: Int = 0,
+    val probability: Double = 0.0,
+    val phishing_type: String? = null,
+    val keywords: List<String> = emptyList(),
+    val method: String = "word_based"
 )
 
 data class Comprehensive(
-    val is_phishing: Boolean,
-    val confidence: Double,
-    val method: String,
-    val analyzed_length: Int
+    val is_phishing: Boolean = false,
+    val confidence: Double = 0.0,
+    val method: String = "tfidf_rf",
+    val analyzed_length: Int = 0
 )
