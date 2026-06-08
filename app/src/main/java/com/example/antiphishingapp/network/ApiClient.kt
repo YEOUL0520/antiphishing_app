@@ -10,11 +10,18 @@ import retrofit2.Response
 
 object ApiClient {
 
-    // ✅ 서버 주소
-//    const val BASE_URL = "https://gupi99.p-e.kr/"
-//    const val AI_BASE_URL = BASE_URL
-    const val BASE_URL = "http://10.0.2.2:8000"
-    const val AI_BASE_URL = "http://10.0.2.2:8001"
+    // ✅ API 서버(인증/문서) — AppConfig.BASE_URL 과 동일 호스트 권장
+    private const val PROD_HOST = "https://gupi99.p-e.kr/"
+
+    // 에뮬레이터 전용: PC localhost (실기기에서는 동작 안 함)
+    private const val EMULATOR_API = "http://10.0.2.2:8000/"
+    private const val EMULATOR_AI = "http://10.0.2.2:8001/"
+
+    /** 실기기·운영 빌드: PROD_HOST / 에뮬레이터: EMULATOR_* 로 바꿔서 빌드 */
+    const val BASE_URL = PROD_HOST
+
+    // 음성 녹음 analyze-audio, STT WebSocket — nginx가 /api/* → ai_server(8001) 로 프록시해야 함
+    const val AI_BASE_URL = PROD_HOST
 
     val WS_BASE_URL: String
         get() = when {
