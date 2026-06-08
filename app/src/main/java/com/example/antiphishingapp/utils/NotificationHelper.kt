@@ -11,6 +11,7 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import com.example.antiphishingapp.R
 import com.example.antiphishingapp.feature.realtime.RealtimeCallService
+import com.example.antiphishingapp.ui.MainActivity
 
 object NotificationHelper {
 
@@ -122,5 +123,48 @@ object NotificationHelper {
             2001,
             builder.build()
         )
+    }
+
+
+    /* ---------------------------------------------------
+ * 4. 통화 종료 알림
+ * --------------------------------------------------- */
+    fun showCallEndedNotification(context: Context) {
+        createCallChannel(context)
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            val granted = ContextCompat.checkSelfPermission(
+                context,
+                android.Manifest.permission.POST_NOTIFICATIONS
+            ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+            if (!granted) return
+        }
+
+        if (!NotificationManagerCompat.from(context).areNotificationsEnabled()) return
+
+        // ── 알림 터치 시 앱 열고 음성 업로드 화면으로 이동 ──────────
+        val intent = Intent(context, MainActivity::class.java).apply {
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
+            putExtra("navigate_to", "voiceUpload")  // 이동할 화면 전달
+        }
+
+        val pendingIntent = PendingIntent.getActivity(
+            context,
+            0,
+            intent,
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        )
+        // ────────────────────────────────────────────────────────────
+
+        val builder = NotificationCompat.Builder(context, CHANNEL_ID_CALL)
+            .setSmallIcon(R.drawable.ic_launcher_foreground)
+            .setContentTitle("통화가 종료되었습니다")
+            .setContentText("음성 파일을 업로드하여 보이스피싱 위험도를 분석해보세요.")
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setAutoCancel(true)
+            .setContentIntent(pendingIntent)  // ← 추가
+
+        NotificationManagerCompat.from(context).notify(2002, builder.build())
     }
 }

@@ -39,10 +39,13 @@ fun AnalysisScreen(
         // ── 새로운 결과 표시 ──────────────────────────────────────────
         Text("📄 파일명: ${result.filename}")
         Text("🔎 판정 결과: ${result.forgery.result}")
-        Text("📊 AI 점수: ${result.forgery.score}")
+        Text("📊 AI 점수: ${result.forgery.score ?: "N/A"}")  // ── nullable 처리
         Text(
-            text = if (result.forgery.is_forged) "🚨 위조 의심 문서입니다."
-            else "✅ 정상 문서입니다."
+            text = when (result.forgery.is_forged) {              // ── nullable 처리
+                true  -> "🚨 위조 의심 문서입니다."
+                false -> "✅ 정상 문서입니다."
+                null  -> "⚠️ 문서로 판별되지 않았습니다."
+            }
         )
 
         Spacer(modifier = Modifier.height(32.dp))

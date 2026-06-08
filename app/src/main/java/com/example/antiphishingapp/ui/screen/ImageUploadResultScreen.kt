@@ -1,5 +1,6 @@
 package com.example.antiphishingapp.ui.screen
 
+import android.util.Log
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -56,16 +57,16 @@ fun ImageUploadResultScreen(
     // val forgeryScore = (analysis.final_risk * 100).toInt()
 
     // ── 새로운 위험도 계산 ────────────────────────────────────────────
-    // score: 양수(정상)~음수(위조), 대략 -0.5 ~ +0.5 범위
-    // 위험도% = score가 낮을수록 높게, 높을수록 낮게 변환
-//    val forgeryScore = ((-analysis.forgery.score + 0.5f) * 100f)
-//        .coerceIn(0f, 100f).toInt()
-    val forgeryScore = (99f - (analysis.forgery.score + 0.25f) * 196f)
-        .coerceIn(1f, 99f).toInt()
+    // score가 null인 경우 (document_detected=false 후 강제검사 등) 기본값 50 사용
+    val forgeryScore = analysis.forgery.score?.let { score ->
+        (99f - (score + 0.25f) * 196f).coerceIn(1f, 99f).toInt()
+    } ?: 50
+
     val scoreColor = calculateScoreColor(forgeryScore)
 
+    val fullImageUrl = ApiClient.AI_BASE_URL.removeSuffix("/") + analysis.url
+    Log.d("IMAGE_URL", "이미지 URL: $fullImageUrl")  // ← 추가
 
-    val fullImageUrl = ApiClient.BASE_URL.removeSuffix("/") + analysis.url
 
     var showPopup by remember { mutableStateOf(false) }
     val painter = rememberAsyncImagePainter(fullImageUrl)
@@ -368,10 +369,35 @@ fun SuspiciousItemsBox(items: List<SuspiciousItem>) {
 // ── 새로운 generateSuspiciousItems ───────────────────────────────────
 fun generateSuspiciousItems(analysis: AnalysisResponse): List<SuspiciousItem> {
     val list = mutableListOf<SuspiciousItem>()
-    if (analysis.forgery.is_forged) {
-        list.add(SuspiciousItem("AI 분석 결과 위조 문서로 판정되었습니다. (점수: ${analysis.forgery.score})"))
+
+    // ── 크롭 발생 여부 로그 ───────────────────────────────────────────
+    Log.d("FORGERY", "✂️ 문서 영역 크롭 발생: ${analysis.forgery.was_cropped}")
+
+    // ── is_forged가 null인 경우 (문서 아님) 처리 ─────────────────────
+    if (analysis.forgery.is_forged == null) {
+        list.add(SuspiciousItem("문서로 판별되지 않은 이미지입니다."))
+        return list
+    }
+
+    if (analysis.forgery.is_forged == true) {
+        // 로그캣에 reasons 출력
+        Log.d("FORGERY", "🔍 위조 판단 근거 (${analysis.forgery.reasons.size}개):")
+        analysis.forgery.reasons.forEachIndexed { index, reason ->
+            Log.d("FORGERY", "  ${index + 1}. $reason")
+        }
+
+        // 화면 표시
+        if (analysis.forgery.reasons.isNotEmpty()) {
+            analysis.forgery.reasons.forEach { reason ->
+                list.add(SuspiciousItem(reason))
+            }
+        } else {
+            list.add(SuspiciousItem("AI 분석 결과 위조 문서로 판정되었습니다. (점수: ${analysis.forgery.score})"))
+        }
     } else {
+        Log.d("FORGERY", "✅ 정상 문서로 판정되었습니다. (점수: ${analysis.forgery.score})")
         list.add(SuspiciousItem("위조 의심 항목이 없습니다."))
     }
+
     return list
 }

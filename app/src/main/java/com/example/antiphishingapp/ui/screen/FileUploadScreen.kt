@@ -30,6 +30,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.SpanStyle
@@ -76,17 +77,20 @@ fun FileUploadScreen(
 
     val voiceLoading by voiceAnalysisViewModel.loading.observeAsState(false)
     val voiceResult by voiceAnalysisViewModel.result.observeAsState()
-    val voiceError by voiceAnalysisViewModel.error.observeAsState()
+    val voiceError by voiceAnalysisViewModel.error.observeAsState()  // ── 팀원 추가 유지
 
     val context = LocalContext.current
-    var voiceErrorDialog by remember { mutableStateOf<String?>(null) }
+    var voiceErrorDialog by remember { mutableStateOf<String?>(null) }  // ── 팀원 추가 유지
 
     var showNotDocOverlay by remember { mutableStateOf(false) }
 
     // ── 기존 방식 선택 다이얼로그 관련 변수 (주석처리) ────────────────
     // var showMethodSelectionDialog by remember { mutableStateOf(false) }
-    // var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
     var serverStartTime by remember { mutableStateOf(0L) }
+
+    // ── 문서 아님 오버레이용 변수 추가 ───────────────────────────────
+    var showNotDocumentOverlay by remember { mutableStateOf(false) }
+    var lastUploadedUri by remember { mutableStateOf<Uri?>(null) }  // 강제 검사 시 재사용
 
     // 음성 업로드
     val pickAudioLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
@@ -96,6 +100,7 @@ fun FileUploadScreen(
         }
     }
 
+    // ── 팀원 추가 유지: voiceError 처리 ──────────────────────────────
     LaunchedEffect(voiceError) {
         voiceError?.let { msg ->
             voiceErrorDialog = msg
@@ -103,6 +108,7 @@ fun FileUploadScreen(
         }
     }
 
+    // ── 팀원 추가 유지: voiceResult 처리 ─────────────────────────────
     LaunchedEffect(voiceResult) {
         voiceResult?.let { result ->
             onVoiceUploadSuccess(result)
@@ -113,6 +119,7 @@ fun FileUploadScreen(
     // ── 이미지 업로드: 선택 즉시 바로 서버로 전송 ────────────────────
     val pickImageLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         if (uri != null) {
+            lastUploadedUri = uri  // ── 강제 검사 시 재사용을 위해 저장
             serverStartTime = System.currentTimeMillis()
             Log.d("AI_TEST", "🌐 서버로 이미지 전송 시작...")
             val multipart = uriToMultipart("file", uri, context)
@@ -147,7 +154,12 @@ fun FileUploadScreen(
             // }
 
             // ── 새로운 위조 판단 로직 ──────────────────────────────────
-            onUploadSuccess(analysis)
+            if (analysis.forgery.document_detected == false) {
+                // 문서로 판별되지 않은 경우 → 선택 다이얼로그 표시
+                showNotDocumentOverlay = true
+            } else {
+                onUploadSuccess(analysis)
+            }
 
             analysisViewModel.resetResult()
         }
@@ -163,10 +175,20 @@ fun FileUploadScreen(
                     .padding(horizontal = 24.dp)
                     // ── 기존: showMethodSelectionDialog 조건 포함 (주석처리)
                     // .then(if (showNotDocOverlay || showMethodSelectionDialog) Modifier.blur(10.dp) else Modifier)
-                    .then(if (showNotDocOverlay) Modifier.blur(10.dp) else Modifier)
+                    .then(if (showNotDocOverlay || showNotDocumentOverlay) Modifier.blur(10.dp) else Modifier)
             ) {
                 Spacer(modifier = Modifier.height(32.dp))
-                TopBar(userName = userName)
+                TopBar(
+                    userName = userName,
+                    onLogout = {
+                        authViewModel.logout {
+                            navController.navigate("title") {
+                                popUpTo(0) { inclusive = true }
+                            }
+                        }
+                    }
+                )
+
                 Spacer(modifier = Modifier.height(62.dp))
                 FileUploadHeader()
                 Spacer(modifier = Modifier.height(32.dp))
@@ -198,6 +220,7 @@ fun FileUploadScreen(
                 ) { CircularProgressIndicator(color = Primary900) }
             }
 
+            // ── 팀원 추가 유지: 음성 에러 다이얼로그 ─────────────────────
             voiceErrorDialog?.let { errMsg ->
                 Box(
                     Modifier
@@ -215,7 +238,7 @@ fun FileUploadScreen(
                 }
             }
 
-            // 실패 오버레이
+            // 실패 오버레이 (기존 유지)
             BackHandler(enabled = showNotDocOverlay) { showNotDocOverlay = false }
             if (showNotDocOverlay) {
                 Box(
@@ -235,42 +258,49 @@ fun FileUploadScreen(
                 }
             }
 
+            // ── 문서 아님 오버레이 (새로 추가) ───────────────────────────
+            BackHandler(enabled = showNotDocumentOverlay) { showNotDocumentOverlay = false }
+            if (showNotDocumentOverlay) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Grayscale300.copy(alpha = 0.25f))
+                        .clickable { },
+                    contentAlignment = Alignment.Center
+                ) {
+                    AlertDialog(
+                        onDismissRequest = { showNotDocumentOverlay = false },
+                        title = { Text("문서로 인식되지 않았습니다") },
+                        text = { Text("업로드한 이미지가 문서로 판별되지 않았습니다.\n그래도 검사를 진행하시겠습니까?") },
+                        confirmButton = {
+                            TextButton(onClick = {
+                                showNotDocumentOverlay = false
+                                // ── 강제 검사 요청 (force=true) ──────────────
+                                lastUploadedUri?.let { uri ->
+                                    serverStartTime = System.currentTimeMillis()
+                                    Log.d("AI_TEST", "🔄 강제 검사 요청...")
+                                    val multipart = uriToMultipart("file", uri, context)
+                                    analysisViewModel.analyzeDocumentForce(multipart)
+                                }
+                            }) {
+                                Text("무시하고 검사")
+                            }
+                        },
+                        dismissButton = {
+                            TextButton(onClick = {
+                                showNotDocumentOverlay = false
+                                pickImageLauncher.launch("image/*")
+                            }) {
+                                Text("다시 업로드")
+                            }
+                        }
+                    )
+                }
+            }
+            // ────────────────────────────────────────────────────────────
+
             // ── 기존 방식 선택 다이얼로그 (주석처리) ─────────────────────
-            // if (showMethodSelectionDialog && selectedImageUri != null) {
-            //     AlertDialog(
-            //         onDismissRequest = { showMethodSelectionDialog = false },
-            //         title = { Text("검사 방식 선택") },
-            //         text = { Text("어떤 방식으로 위조 여부를 검사할까요?\n(결과는 Logcat에서 확인하세요)") },
-            //         confirmButton = {
-            //             TextButton(onClick = {
-            //                 showMethodSelectionDialog = false
-            //                 serverStartTime = System.currentTimeMillis()
-            //                 Log.d("AI_TEST", "🌐 [기존 방식] 서버로 이미지 전송 시작...")
-            //                 val multipart = uriToMultipart("file", selectedImageUri!!, context)
-            //                 analysisViewModel.analyzeDocument(multipart)
-            //             }) {
-            //                 Text("기존 방식 (서버)")
-            //             }
-            //         },
-            //         dismissButton = {
-            //             TextButton(onClick = {
-            //                 showMethodSelectionDialog = false
-            //                 Log.d("AI_TEST", "🤖 [새 방식] 폰 내부 AI 분석 시작...")
-            //                 runOnDeviceAiMethod(context, selectedImageUri!!) { score ->
-            //                     if (score > 0.0028) {
-            //                         Log.d("AI_TEST", "🚨 위조 의심! 제미나이에게 2차 정밀 분석을 요청합니다.")
-            //                         val bitmap = uriToBitmap(context, selectedImageUri!!)
-            //                         analysisViewModel.analyzeWithGemini(bitmap, score)
-            //                     } else {
-            //                         Log.d("AI_TEST", "✅ 정상 문서입니다. 제미나이를 호출하지 않습니다.")
-            //                     }
-            //                 }
-            //             }) {
-            //                 Text("새 방식 (AI 모델)")
-            //             }
-            //         }
-            //     )
-            // }
+            // if (showMethodSelectionDialog && selectedImageUri != null) { ... }
         }
     }
 }
@@ -279,54 +309,8 @@ fun FileUploadScreen(
 // 🤖 새 방식 (AI 모델) 판별 도우미 함수들 (주석처리)
 // ======================================================================
 
-// fun runOnDeviceAiMethod(context: Context, uri: Uri, onResult: (Double) -> Unit) {
-//     val startTime = System.currentTimeMillis()
-//     try {
-//         val tfliteModel = loadModelFile(context, "model_float32_v01.tflite")
-//         val interpreter = Interpreter(tfliteModel)
-//         val bitmap = uriToBitmap(context, uri)
-//         val resizedBitmap = Bitmap.createScaledBitmap(bitmap, 128, 128, true)
-//         val inputBuffer = bitmapToByteBuffer(resizedBitmap)
-//         val outputBuffer = ByteBuffer.allocateDirect(4 * 1 * 3 * 128 * 128)
-//         outputBuffer.order(ByteOrder.nativeOrder())
-//         interpreter.run(inputBuffer, outputBuffer)
-//         inputBuffer.rewind()
-//         outputBuffer.rewind()
-//         var sumError = 0.0
-//         val totalPixels = 128 * 128 * 3
-//         for (i in 0 until totalPixels) {
-//             val originalPixel = inputBuffer.float
-//             val aiPixel = outputBuffer.float
-//             val diff = (originalPixel - aiPixel).toDouble()
-//             sumError += diff * diff
-//         }
-//         val score = sumError / totalPixels
-//         val endTime = System.currentTimeMillis()
-//         val duration = endTime - startTime
-//         Log.d("AI_TEST", "================ [1차 AI 검사 결과] ================")
-//         Log.d("AI_TEST", "⏱ 소요 시간: ${duration}ms")
-//         Log.d("AI_TEST", "📊 오차 점수: $score")
-//         if (score > 0.011) {
-//             Log.d("AI_TEST", "🚨 판정: 위조 의심 문서입니다! (제미나이 2차 검사로 넘어갑니다)")
-//         } else {
-//             Log.d("AI_TEST", "✅ 판정: 정상 문서입니다. (여기서 검사를 종료합니다)")
-//         }
-//         Log.d("AI_TEST", "=====================================================")
-//         onResult(score)
-//         interpreter.close()
-//     } catch (e: Exception) {
-//         Log.e("AI_TEST", "❌ AI 실행 중 오류 발생: ${e.message}")
-//     }
-// }
-
-// fun loadModelFile(context: Context, modelName: String): ByteBuffer {
-//     val assetFileDescriptor = context.assets.openFd(modelName)
-//     val fileInputStream = FileInputStream(assetFileDescriptor.fileDescriptor)
-//     val fileChannel = fileInputStream.channel
-//     val startOffset = assetFileDescriptor.startOffset
-//     val declaredLength = assetFileDescriptor.declaredLength
-//     return fileChannel.map(FileChannel.MapMode.READ_ONLY, startOffset, declaredLength)
-// }
+// fun runOnDeviceAiMethod(context: Context, uri: Uri, onResult: (Double) -> Unit) { ... }
+// fun loadModelFile(context: Context, modelName: String): ByteBuffer { ... }
 
 fun uriToBitmap(context: Context, uri: Uri): Bitmap {
     return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
@@ -379,7 +363,7 @@ fun uriToTempFile(context: Context, uri: Uri): File {
 }
 
 @Composable
-private fun TopBar(userName: String) {
+private fun TopBar(userName: String, onLogout: () -> Unit = {}) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -404,11 +388,12 @@ private fun TopBar(userName: String) {
             )
         }
         Spacer(modifier = Modifier.weight(1f))
-        IconButton(onClick = { }) {
+        IconButton(onClick = onLogout) {
             Icon(
-                imageVector = Icons.Default.Menu,
-                contentDescription = "Menu",
-                modifier = Modifier.size(24.dp)
+                painter = painterResource(id = R.drawable.icon_logout_2),
+                contentDescription = "로그아웃",
+                modifier = Modifier.size(24.dp),
+                tint = Color.Unspecified
             )
         }
     }

@@ -35,6 +35,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
@@ -78,15 +79,24 @@ fun MainScreen(
         ) {
             Spacer(modifier = Modifier.height(32.dp))
 
-            TopBar(userName = userName)
-            Spacer(modifier = Modifier.height(103.dp))
+            // ── 로그아웃 콜백 추가 ──────────────────────────────────
+            TopBar(
+                userName = userName,
+                onLogout = {
+                    authViewModel.logout {
+                        navController.navigate("title") {
+                            popUpTo(0) { inclusive = true }
+                        }
+                    }
+                }
+            )
+            // ────────────────────────────────────────────────────────
 
+            Spacer(modifier = Modifier.height(103.dp))
             Greeting(userName = userName)
             Spacer(modifier = Modifier.height(32.dp))
 
-            Column(
-                modifier = Modifier.verticalScroll(rememberScrollState())
-            ) {
+            Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
                 ActionCard(
                     title = "파일 업로드",
                     description = "문서 이미지 캡쳐, 음성 메시지의\n피싱 위험도 확인이 가능합니다.",
@@ -94,14 +104,12 @@ fun MainScreen(
                     onClick = { navController.navigate("fileUpload") }
                 )
                 Spacer(modifier = Modifier.height(25.dp))
-
                 ActionCard(
                     title = "탐지 기록 확인",
                     description = "의심 전화 및 문자를 탐지하고,\n위험도를 확인할 수 있습니다.",
                     iconRes = R.drawable.mainscreen02,
                     onClick = { navController.navigate("detectHistory") }
                 )
-
                 HelpSection(modifier = Modifier.padding(vertical = 64.dp))
             }
         }
@@ -109,7 +117,7 @@ fun MainScreen(
 }
 
 @Composable
-fun TopBar(userName: String) {
+fun TopBar(userName: String, onLogout: () -> Unit = {}) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -117,7 +125,7 @@ fun TopBar(userName: String) {
         verticalAlignment = Alignment.CenterVertically
     ) {
         Row(
-            modifier = Modifier.clickable { /* No action */ },
+            modifier = Modifier.clickable { },
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
@@ -134,13 +142,26 @@ fun TopBar(userName: String) {
             )
         }
         Spacer(modifier = Modifier.weight(1f))
-        IconButton(onClick = { /* No action */ }) {
+
+        // ── 메뉴 버튼 → 로그아웃 ──────────────────────────────────
+//        IconButton(onClick = onLogout) {
+//            Icon(
+//                imageVector = Icons.Default.Menu,
+//                contentDescription = "로그아웃",
+//                modifier = Modifier.size(24.dp)
+//            )
+//        }
+        // ── 로그아웃 텍스트 버튼 ────────────────────────────────────────
+        IconButton(onClick = onLogout) {
             Icon(
-                imageVector = Icons.Default.Menu,
-                contentDescription = "Menu",
-                modifier = Modifier.size(24.dp)
+                painter = painterResource(id = R.drawable.icon_logout_2),
+                contentDescription = "로그아웃",
+                modifier = Modifier.size(24.dp),
+                tint = Color.Unspecified
             )
         }
+
+        // ────────────────────────────────────────────────────────
     }
 }
 

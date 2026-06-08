@@ -73,6 +73,22 @@ class MainActivity : ComponentActivity() {
         NotificationHelper.createChannel(this)
 
         // 🧭 Compose Navigation 설정
+//        setContent {
+//            val startDestination = remember {
+//                if (authRepository.isAuthenticated()) "main" else "title"
+//            }
+//
+//            AntiPhishingAppTheme {
+//                val navController = rememberNavController()
+//
+//                Surface(
+//                    modifier = Modifier,
+//                    color = MaterialTheme.colorScheme.background
+//                ) {
+//                    AppNavGraph(navController, startDestination)
+//                }
+//            }
+//        }
         setContent {
             val startDestination = remember {
                 if (authRepository.isAuthenticated()) "main" else "title"
@@ -80,6 +96,15 @@ class MainActivity : ComponentActivity() {
 
             AntiPhishingAppTheme {
                 val navController = rememberNavController()
+
+                // ── 알림 터치로 앱 실행 시 화면 이동 처리 ──────────────
+                val navigateTo = intent?.getStringExtra("navigate_to")
+                if (navigateTo == "voiceUpload" && authRepository.isAuthenticated()) {
+                    androidx.compose.runtime.LaunchedEffect(Unit) {
+                        navController.navigate("fileUpload")
+                    }
+                }
+                // ────────────────────────────────────────────────────
 
                 Surface(
                     modifier = Modifier,
