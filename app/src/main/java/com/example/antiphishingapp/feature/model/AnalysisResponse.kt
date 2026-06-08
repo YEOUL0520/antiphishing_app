@@ -13,9 +13,12 @@ data class AnalysisResponse(
 )
 
 data class ForgeryInfo(
-    val is_forged: Boolean,
-    val result: String,   // "정상" or "위조 의심"
-    val score: Float
+    val document_detected: Boolean = true,  // ── 추가: 문서 판별 결과 (false면 문서 아님)
+    val was_cropped: Boolean = false,        // ── 추가: 크롭 발생 여부
+    val is_forged: Boolean?,                // ── nullable로 변경: 문서 아님일 때 null
+    val result: String,                     // "정상" / "위조 의심" / "문서 아님"
+    val score: Float?,                      // ── nullable로 변경: 문서 아님일 때 null
+    val reasons: List<String> = emptyList() // 위조 판단 근거 (정상이면 빈 리스트)
 )
 
 // ── 기존 데이터 클래스 (주석처리) ──────────────────────────────────

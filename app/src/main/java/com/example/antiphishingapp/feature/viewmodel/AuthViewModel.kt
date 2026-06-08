@@ -5,6 +5,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.antiphishingapp.feature.model.UserResponse
 import com.example.antiphishingapp.feature.repository.AuthRepository
+import com.example.antiphishingapp.network.ApiClient
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -43,5 +44,24 @@ class AuthViewModel(
         val userInfo = authRepository.getMe()
         _user.value = userInfo
         _isLoading.value = false
+    }
+
+
+    /** 로그아웃: 서버에 알림 후 토큰 삭제 */
+    fun logout(onComplete: () -> Unit) {
+        viewModelScope.launch {
+            try {
+                val token = authRepository.getAccessToken()
+                if (token != null) {
+                    ApiClient.apiService.logout("Bearer $token")
+                }
+            } catch (e: Exception) {
+                // 서버 요청 실패해도 로컬 토큰은 반드시 삭제
+            } finally {
+                authRepository.clearTokens()
+                _user.value = null
+                onComplete()
+            }
+        }
     }
 }

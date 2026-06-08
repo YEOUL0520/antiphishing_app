@@ -35,6 +35,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -79,7 +80,17 @@ fun DetectHistoryScreen(
         ) {
             Spacer(modifier = Modifier.height(32.dp))
 
-            TopBar(userName = userName)
+            TopBar(
+                userName = userName,
+                onLogout = {
+                    authViewModel.logout {
+                        navController.navigate("title") {
+                            popUpTo(0) { inclusive = true }
+                        }
+                    }
+                }
+            )
+
             Spacer(modifier = Modifier.height(62.dp))
 
             DetectHistoryHeader()
@@ -110,7 +121,7 @@ fun DetectHistoryScreen(
 }
 
 @Composable
-private fun TopBar(userName: String) {
+private fun TopBar(userName: String, onLogout: () -> Unit = {}) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -135,13 +146,15 @@ private fun TopBar(userName: String) {
             )
         }
         Spacer(modifier = Modifier.weight(1f))
-        IconButton(onClick = { /* No action */ }) {
+        IconButton(onClick = onLogout) {
             Icon(
-                imageVector = Icons.Default.Menu,
-                contentDescription = "Menu",
-                modifier = Modifier.size(24.dp)
+                painter = painterResource(id = R.drawable.icon_logout_2),
+                contentDescription = "로그아웃",
+                modifier = Modifier.size(24.dp),
+                tint = Color.Unspecified
             )
         }
+
     }
 }
 

@@ -23,41 +23,34 @@ object ApiClient {
     // 음성 녹음 analyze-audio, STT WebSocket — nginx가 /api/* → ai_server(8001) 로 프록시해야 함
     const val AI_BASE_URL = PROD_HOST
 
-    // ✅ WebSocket용 주소 자동 변환
-    val AI_WS_BASE_URL: String
+    val WS_BASE_URL: String
         get() = when {
-            AI_BASE_URL.startsWith("https://") -> AI_BASE_URL.replaceFirst("https://", "wss://")
-            AI_BASE_URL.startsWith("http://") -> AI_BASE_URL.replaceFirst("http://", "ws://")
-            else -> AI_BASE_URL
+            BASE_URL.startsWith("https://") -> BASE_URL.replaceFirst("https://", "wss://")
+            BASE_URL.startsWith("http://") -> BASE_URL.replaceFirst("http://", "ws://")
+            else -> BASE_URL
         }
 
-    // ✅ WebSocket URL Helper
     fun wsUrl(path: String): String {
-        val base = AI_WS_BASE_URL.removeSuffix("/")
+        val base = WS_BASE_URL.removeSuffix("/")
         val cleanPath = path.removePrefix("/")
         return "$base/$cleanPath"
     }
 
-    // ✅ STT 전용 WebSocket URL
     val TRANSCRIPTION_WS_URL: String
         get() = wsUrl("api/transcribe/ws?sr=16000&lang=ko-KR")
 
-    // ✅ 내부용 OkHttpClient (private 유지)
     private val okHttpClient: OkHttpClient by lazy {
         OkHttpClient.Builder()
             .connectTimeout(30, TimeUnit.SECONDS)
-            // 무한 대기를 피하기 위해 전체 호출 시간 제한을 둡니다.
-            .callTimeout(130, TimeUnit.SECONDS)
-            .readTimeout(120, TimeUnit.SECONDS)
-            .writeTimeout(120, TimeUnit.SECONDS)
+            .readTimeout(30, TimeUnit.SECONDS)
+            .writeTimeout(30, TimeUnit.SECONDS)
             .build()
     }
 
-    // ✅ 외부에서 재사용할 수 있는 getter (읽기 전용)
     val sharedClient: OkHttpClient
         get() = okHttpClient
 
-    // ✅ Retrofit 인스턴스
+    // ✅ API 서버용 Retrofit (인증 담당)
     private val retrofit: Retrofit by lazy {
         Retrofit.Builder()
             .baseUrl(BASE_URL)
@@ -66,7 +59,7 @@ object ApiClient {
             .build()
     }
 
-    // ✅ AI 서버용 Retrofit 인스턴스
+    // ✅ AI 서버용 Retrofit (위조 탐지 담당)
     private val aiRetrofit: Retrofit by lazy {
         Retrofit.Builder()
             .baseUrl(AI_BASE_URL)
@@ -79,6 +72,7 @@ object ApiClient {
         retrofit.create(ApiService::class.java)
     }
 
+    // ✅ AI 서버용 ApiService
     val aiApiService: ApiService by lazy {
         aiRetrofit.create(ApiService::class.java)
     }

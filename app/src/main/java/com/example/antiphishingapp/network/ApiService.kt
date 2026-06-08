@@ -41,9 +41,17 @@ interface ApiService {
     @GET("api/transcribe/status/{token}")
     fun getTranscribeStatus(@Path("token") token: String): Call<ResponseBody>
 
+    // 기존
     @Multipart
     @POST("process-request")
     fun processRequest(@Part file: MultipartBody.Part): Call<AnalysisResponse>
+    // force 버전 추가
+    @Multipart
+    @POST("process-request")
+    fun processRequestForce(
+        @Part file: MultipartBody.Part,
+        @Query("force") force: Boolean = true
+    ): Call<AnalysisResponse>
 
     @POST("api/sms/detect_json")
     fun detectSmsJson(@Body payload: SmsDetectRequest): Call<SmsDetectResponse>
@@ -66,4 +74,8 @@ interface ApiService {
     // 사용자 정보 조회
     @GET("auth/me")
     suspend fun getMe(@Header("Authorization") token: String): Response<UserResponse>
+
+    // 로그아웃
+    @POST("auth/logout")
+    suspend fun logout(@Header("Authorization") token: String): Response<ResponseBody>
 }
